@@ -11,8 +11,7 @@
                               (header (apply #'vellum.header:make-header
                                              header-class columns))
                               &allow-other-keys)
-    (let* ((column-count (vellum.header:column-count header))
-           (function (if (null body)
+    (let* ((function (if (null body)
                          (constantly nil)
                          (vellum:bind-row-closure body)))
            (table (vellum:make-table :class class :header header))
@@ -26,7 +25,7 @@
                          transformation
                          (lambda ()
                            (iterate
-                             (for i from 0 below column-count)
+                             (for i from 0)
                              (for data-type = (vellum.header:column-type header i))
                              (for c in content)
                              (for string = (funcall key c))
