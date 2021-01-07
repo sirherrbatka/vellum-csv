@@ -15,34 +15,25 @@
            (function (if (null body)
                          (constantly nil)
                          (vellum:bind-row-closure body)))
-           (columns (make-array column-count)))
-      (iterate
-        (for i from 0 below column-count)
-        (setf (aref columns i)
-              (vellum.column:make-sparse-material-column
-               :element-type (vellum.header:column-type header i))))
-      (let* ((iterator (vellum.column:make-iterator columns))
-             (vellum.header:*row* (serapeum:box (make 'vellum.table:setfable-table-row
-                                                      :iterator iterator)))
-             (table (make class :header header :columns columns))
-             (transformation (vellum.table:transformation table nil
-                                                          :in-place t)))
-        (cl-ds:traverse object
-                        (lambda (string)
-                          (let ((content (~> string make-string-input-stream
-                                             fare-csv:read-csv-line)))
-                            (vellum:transform-row
-                             transformation
-                             (lambda ()
-                               (iterate
-                                 (for i from 0 below column-count)
-                                 (for data-type = (vellum.header:column-type header i))
-                                 (for c in content)
-                                 (for string = (funcall key c))
-                                 (setf (vellum:rr i)
-                                       (from-string data-type string))
-                                 (finally (funcall function))))))))
-        (vellum:transformation-result transformation)))))
+           (table (vellum:make-table :class class :header header))
+           (transformation (vellum.table:transformation table nil
+                                                        :in-place t)))
+      (cl-ds:traverse object
+                      (lambda (string)
+                        (let ((content (~> string make-string-input-stream
+                                           fare-csv:read-csv-line)))
+                          (vellum:transform-row
+                           transformation
+                           (lambda ()
+                             (iterate
+                               (for i from 0 below column-count)
+                               (for data-type = (vellum.header:column-type header i))
+                               (for c in content)
+                               (for string = (funcall key c))
+                               (setf (vellum:rr i)
+                                     (from-string data-type string))
+                               (finally (funcall function))))))))
+      (vellum:transformation-result transformation))))
 
 
 (defmethod vellum:copy-from ((format (eql :csv))
