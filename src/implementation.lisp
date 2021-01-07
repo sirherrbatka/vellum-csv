@@ -21,19 +21,19 @@
                                                            :in-place t)))
           (cl-ds:across object
                         (lambda (string)
-                            (let ((content (~> string make-string-input-stream
-                                               fare-csv:read-csv-line)))
-                              (vellum:transform-row
-                               transformation
-                               (lambda ()
-                                 (iterate
-                                   (for i from 0 below column-count)
-                                   (for data-type = (vellum.header:column-type header i))
-                                   (for c in content)
-                                   (for string = (funcall key c))
-                                   (setf (vellum:rr i)
-                                         (from-string data-type string))
-                                   (finally (funcall function))))))))
+                          (let ((content (~> string make-string-input-stream
+                                             fare-csv:read-csv-line)))
+                            (vellum:transform-row
+                             transformation
+                             (lambda ()
+                               (iterate
+                                 (for i from 0 below column-count)
+                                 (for data-type = (vellum.header:column-type header i))
+                                 (for c in content)
+                                 (for string = (funcall key c))
+                                 (setf (vellum:rr i)
+                                       (from-string data-type string))
+                                 (finally (funcall function))))))))
           (vellum:transformation-result transformation)))))
 
 
