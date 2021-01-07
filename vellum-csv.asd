@@ -17,4 +17,5 @@
   :components ((:file "package")
                (:file "generics")
                (:file "types")
+               (:file "functions")
                (:file "implementation")))
