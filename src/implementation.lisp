@@ -19,8 +19,8 @@
       (vellum:with-table (table)
         (let ((transformation (vellum.table:transformation table nil
                                                            :in-place t)))
-          (cl-ds:traverse object
-                          (lambda (string)
+          (cl-ds:across object
+                        (lambda (string)
                             (let ((content (~> string make-string-input-stream
                                                fare-csv:read-csv-line)))
                               (vellum:transform-row
