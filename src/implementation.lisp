@@ -1,6 +1,36 @@
 (cl:in-package #:vellum-csv)
 
 
+(defmethod vellum:copy-to ((format (eql :csv))
+                           (output stream)
+                           input
+                           &rest options
+                           &key (includes-header-p t))
+  (declare (ignore options))
+  (let ((column-count (vellum:column-count input)))
+    (when includes-header-p
+      (iterate
+        (for i from 0 below column-count)
+        (collect (vellum:column-name input i)
+          into fields)
+        (finally (fare-csv:write-csv-line fields
+                                          output))))
+    (vellum:transform input
+                      (vellum:bind-row ()
+                        (iterate
+                          (for i from 0 below column-count)
+                          (for data-type =
+                               (vellum:column-type input i))
+                          (collect (~>> i vellum:rr
+                                        (to-string data-type))
+                            into fields)
+                          (finally
+                           (fare-csv:write-csv-line fields
+                                                    output))))
+                      :in-place t)
+    input))
+
+
 (defmethod vellum:to-table ((object csv-range)
                             &key
                               (key #'identity)
@@ -13,7 +43,7 @@
                               &allow-other-keys)
     (let* ((function (if (null body)
                          (constantly nil)
-                         (vellum:bind-row-closure body)))
+                         (vellum:bind-row-closure body :header header)))
            (table (vellum:make-table :class class :header header))
            (transformation (vellum.table:transformation table nil
                                                         :in-place t))
@@ -72,6 +102,10 @@
 
 (defmethod from-string ((type (eql 't)) string)
   string)
+
+
+(defmethod to-string (type value)
+  (princ value nil))
 
 
 (defmethod from-string ((type (eql 'boolean)) string)
