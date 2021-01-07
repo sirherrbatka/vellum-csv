@@ -1,4 +1,4 @@
-(cl:in-package #:vellum.csv)
+(cl:in-package #:vellum-csv)
 
 
 (defgeneric from-string (data-type string))
