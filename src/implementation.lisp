@@ -62,7 +62,7 @@
                               (from-string data-type string))
                         (finally (funcall function)))))))))
       (cl-ds:across object fn)
-      (vellum:transformation-result transformation))))
+      (vellum:transformation-result transformation)))
 
 
 (defmethod vellum:copy-from ((format (eql :csv))
