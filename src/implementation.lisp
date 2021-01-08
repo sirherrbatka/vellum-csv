@@ -117,7 +117,6 @@
 (defmethod vellum.header:make-row ((header vellum.header:standard-header)
                                    (range csv-range)
                                    string)
-
   (iterate
    (with data = (~> string make-string-input-stream
                     fare-csv:read-csv-line))
