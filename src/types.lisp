@@ -2,9 +2,9 @@
 
 
 (defclass csv-range (cl-ds.alg:proxy-range)
-  ((%header :initarg :header
-            :reader header)))
+  ((%header :initarg :includes-header-p
+            :reader includes-header-p)))
 
 
 (defmethod cl-ds.utils:cloning-information append ((object csv-range))
-  '((:header header)))
+  '((:includes-header-p includes-header-p)))

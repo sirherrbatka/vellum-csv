@@ -31,6 +31,17 @@
     input))
 
 
+(defmethod vellum:copy-to ((format (eql :csv))
+                           output
+                           input
+                           &rest options
+                           &key (includes-header-p t))
+  (declare (ignore options))
+  (with-output-to-file (stream output)
+    (vellum:copy-to format stream input
+                    :includes-header-p includes-header-p)))
+
+
 (defmethod vellum:to-table ((object csv-range)
                             &key
                               (key #'identity)
@@ -54,9 +65,9 @@
                     transformation
                     (lambda ()
                       (iterate
+                        (for c in content)
                         (for i from 0)
                         (for data-type = (vellum.header:column-type header i))
-                        (for c in content)
                         (for string = (funcall key c))
                         (setf (vellum:rr i)
                               (from-string data-type string))
@@ -76,7 +87,11 @@
 (defmethod from-string :around (type string)
   (if (string= "NULL" string)
       :null
-      (parse-integer string)))
+      (call-next-method)))
+
+
+(defmethod from-string ((type (eql 'number)) string)
+  (parse-number string))
 
 
 (defmethod from-string ((type (eql 'integer)) string)

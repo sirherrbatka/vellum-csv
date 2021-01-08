@@ -5,8 +5,10 @@
   (make-instance
    'csv-range :original-range (if (or (stringp path/range)
                                       (pathnamep path/range))
-                                  (~> (cl-ds.fs:line-by-line path/range)
-                                      (cl-ds:drop-front (if includes-header-p 1 0))
-                                      cl-ds:clone)
+                                  (let ((line-by-line (cl-ds.fs:line-by-line path/range)))
+                                    (if includes-header-p
+                                        (progn (cl-ds:consume-front line-by-line)
+                                               (cl-ds:clone line-by-line))
+                                        line-by-line))
                                   path/range)
-              :header includes-header-p))
+              :includes-header-p includes-header-p))

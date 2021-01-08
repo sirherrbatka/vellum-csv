@@ -1,0 +1,16 @@
+# vellum-csv
+
+This system adds a basic support for reading tables from and writing tables to csv files.
+
+#+BEGIN_SRC common-lisp
+  (defparameter *table*
+    (vellum:copy-from :csv "~/csv.csv"
+                      :includes-header-p t
+                      :columns '(a b)))
+#+END_SRC
+
+#+BEGIN_SRC common-lisp
+  (vellum:copy-to :csv "~/output.csv" *table* )
+#+END_SRC
+
+Strings are automaticly converted to values, depending on the :TYPE of the column. Only numbers and strings are supported at this point though. Additional types can be supported by specializing FROM-STRING and TO-STRING generic functions.
