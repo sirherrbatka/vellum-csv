@@ -1,7 +1,7 @@
 (cl:in-package #:vellum-csv)
 
 
-(defun csv-range (path/range &key includes-header-p)
+(defun csv-range (path/range &key includes-header-p header)
   (make-instance
    'csv-range :original-range (if (or (stringp path/range)
                                       (pathnamep path/range))
@@ -11,4 +11,5 @@
                                                (cl-ds:clone line-by-line))
                                         line-by-line))
                                   path/range)
+              :header header
               :includes-header-p includes-header-p))

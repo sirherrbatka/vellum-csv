@@ -42,46 +42,24 @@
                     :includes-header-p includes-header-p)))
 
 
-(defmethod vellum:to-table ((object csv-range)
-                            &key
-                              (key #'identity)
-                              (class 'vellum.table:standard-table)
-                              (header-class 'vellum.header:standard-header)
-                              (columns '())
-                              (body nil)
-                              (header (apply #'vellum.header:make-header
-                                             header-class columns))
-                              &allow-other-keys)
-    (let* ((function (if (null body)
-                         (constantly nil)
-                         (vellum:bind-row-closure body :header header)))
-           (table (vellum:make-table :class class :header header))
-           (transformation (vellum.table:transformation table nil
-                                                        :in-place t))
-           (fn (lambda (string)
-                 (let ((content (~> string make-string-input-stream
-                                    fare-csv:read-csv-line)))
-                   (vellum:transform-row
-                    transformation
-                    (lambda ()
-                      (iterate
-                        (for c in content)
-                        (for i from 0)
-                        (for data-type = (vellum.header:column-type header i))
-                        (for string = (funcall key c))
-                        (setf (vellum:rr i)
-                              (from-string data-type string))
-                        (finally (funcall function)))))))))
-      (cl-ds:across object fn)
-      (vellum:transformation-result transformation)))
-
-
 (defmethod vellum:copy-from ((format (eql :csv))
                              path/range
                              &rest options
-                             &key includes-header-p)
-  (~> (csv-range path/range :includes-header-p includes-header-p)
-      (apply #'vellum:to-table _ options)))
+                             &key
+                             (includes-header-p t)
+                             (class 'vellum.table:standard-table)
+                             (header-class 'vellum.header:standard-header)
+                             (columns '())
+                             (body nil)
+                             (header (apply #'vellum.header:make-header
+                                            header-class columns)))
+  (declare (ignore options))
+  (~> (csv-range path/range
+                 :includes-header-p includes-header-p
+                 :header header)
+      (vellum:to-table _
+                       :body body
+                       :class class)))
 
 
 (defmethod from-string :around (type string)
@@ -134,3 +112,20 @@
     ("F" nil)
     ("Yes" t)
     ("No" nil)))
+
+
+(defmethod vellum.header:make-row ((header vellum.header:standard-header)
+                                   (range csv-range)
+                                   string)
+
+  (iterate
+   (with data = (~> string make-string-input-stream
+                    fare-csv:read-csv-line))
+   (with result = (~> data length make-array))
+   (for elt in data)
+   (for i from 0)
+   (for data-type = (vellum.header:column-type header i))
+   (for value = (from-string data-type elt))
+   (vellum.header:check-predicate header i value)
+   (setf (aref result i) value)
+   (finally (return result))))
