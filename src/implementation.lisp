@@ -63,7 +63,7 @@
 
 
 (defmethod from-string :around (type string)
-  (if (string= "NULL" string)
+  (if (or (emptyp string) (string= "NULL" string))
       :null
       (call-next-method)))
 
