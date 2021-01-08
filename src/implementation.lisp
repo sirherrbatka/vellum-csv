@@ -69,7 +69,7 @@
 
 
 (defmethod from-string ((type (eql 'number)) string)
-  (parse-number string))
+  (parse-number string :float-format 'double-float))
 
 
 (defmethod from-string ((type (eql 'integer)) string)
