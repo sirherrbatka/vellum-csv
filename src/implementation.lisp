@@ -93,7 +93,7 @@
   (parse-float string :type 'double-float))
 
 
-(defmethod from-string ((type (eql 't)) string)
+(defmethod from-string ((type (eql t)) string)
   string)
 
 
