@@ -114,10 +114,10 @@
     ("No" nil)))
 
 
-(defmethod vellum.header:make-row ((header vellum.header:standard-header)
-                                   (range csv-range)
+(defmethod vellum.header:make-row ((range csv-range)
                                    string)
   (iterate
+   (with header = (vellum.header:read-header range))
    (with data = (~> string make-string-input-stream
                     fare-csv:read-csv-line))
    (with result = (~> data length make-array))
