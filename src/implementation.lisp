@@ -51,11 +51,13 @@
                              (header-class 'vellum.header:standard-header)
                              (columns '())
                              (body nil)
+                             (separator #\,)
                              (header (apply #'vellum.header:make-header
                                             header-class columns)))
   (declare (ignore options))
   (~> (csv-range path/range
                  :includes-header-p includes-header-p
+                 :separator separator
                  :header header)
       (vellum:to-table _
                        :body body
@@ -118,8 +120,10 @@
                                    string)
   (iterate
    (with header = (vellum.header:read-header range))
-   (with data = (~> string make-string-input-stream
-                    fare-csv:read-csv-line))
+    (with data = (let ((fare-csv:*separator* (separator range)))
+                   (~> string
+                       make-string-input-stream
+                       fare-csv:read-csv-line)))
    (with result = (~> data length make-array))
    (for elt in data)
    (for i from 0)

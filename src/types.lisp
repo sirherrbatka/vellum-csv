@@ -4,8 +4,11 @@
 (defclass csv-range (vellum.header:frame-range-mixin
                      cl-ds.alg:forward-proxy-range)
   ((%includes-header-p :initarg :includes-header-p
-                       :reader includes-header-p))
-  (:default-initargs))
+                       :reader includes-header-p)
+   (%separator :initarg :separator
+               :reader separator))
+  (:default-initargs
+   :separator #\,))
 
 
 (defmethod cl-ds.utils:cloning-information append ((object csv-range))
