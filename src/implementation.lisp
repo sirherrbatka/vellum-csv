@@ -74,6 +74,10 @@
   (parse-number string :float-format 'double-float))
 
 
+(defmethod from-string ((type (eql 'fixnum)) string)
+  (parse-integer string))
+
+
 (defmethod from-string ((type (eql 'integer)) string)
   (parse-integer string))
 
@@ -119,16 +123,41 @@
 (defmethod vellum.header:make-row ((range csv-range)
                                    string)
   (iterate
-   (with header = (vellum.header:read-header range))
+    (with header = (vellum.header:read-header range))
     (with data = (let ((fare-csv:*separator* (separator range)))
                    (~> string
                        make-string-input-stream
                        fare-csv:read-csv-line)))
-   (with result = (~> data length make-array))
-   (for elt in data)
-   (for i from 0)
-   (for data-type = (vellum.header:column-type header i))
-   (for value = (from-string data-type elt))
-   (vellum.header:check-predicate header i value)
-   (setf (aref result i) value)
-   (finally (return result))))
+    (with result = (~> data length make-array))
+    (for elt in data)
+    (for i from 0)
+    (for data-type = (vellum.header:column-type header i))
+    (for value = (from-string data-type elt))
+    (vellum.header:check-predicate header i value)
+    (setf (aref result i) value)
+    (finally (return result))))
+
+
+(defmethod cl-ds.alg.meta:aggregator-constructor ((range csv-range)
+                                                  outer-constructor
+                                                  (function cl-ds.alg.meta:aggregation-function)
+                                                  (arguments list))
+  (bind ((outer-fn (call-next-method))
+         (header (vellum.header:read-header range)))
+    (cl-ds.alg.meta:aggregator-constructor
+     (cl-ds.alg:read-original-range range)
+     (cl-ds.alg.meta:let-aggregator
+         ((inner (cl-ds.alg.meta:call-constructor outer-fn)))
+
+         ((element)
+           (vellum.header:with-header (header)
+             (let ((row (vellum.header:make-row range element)))
+               (vellum.header:set-row row)
+               (cl-ds.alg.meta:pass-to-aggregation inner
+                                                   row))))
+
+         ((cl-ds.alg.meta:extract-result inner))
+
+       (cl-ds.alg.meta:cleanup inner))
+     function
+     arguments)))
