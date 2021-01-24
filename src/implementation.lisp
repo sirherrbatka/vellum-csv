@@ -131,19 +131,21 @@
     (for elt in data)
     (for i from 0)
     (for data-type = (vellum.header:column-type header i))
-    (for value = (from-string data-type elt))
-    (tagbody main
-       (restart-case (vellum.header:check-predicate header i value)
-         (set-to-null ()
-           :report "Set the row position to :null."
-           (setf value :null)
-           (go main))
-         (provide-new-value (v)
-           :report "Enter the new value."
-           :interactive vellum.header:read-new-value
-           (setf value v)
-           (go main))))
-    (setf (aref result i) value)
+    (let ((value nil))
+      (tagbody main
+         (setf value (from-string data-type elt))
+         check
+         (restart-case (vellum.header:check-predicate header i value)
+           (set-to-null ()
+             :report "Set the row position to :null."
+             (setf value :null)
+             (go check))
+           (provide-new-value (v)
+             :report "Enter the new value."
+             :interactive vellum.header:read-new-value
+             (setf value v)
+             (go check))))
+      (setf (aref result i) value))
     (finally (return result))))
 
 
@@ -160,14 +162,10 @@
 
          ((element)
            (vellum.header:with-header (header)
-             (block nil
-               (let ((row (restart-case (vellum.header:make-row range element)
-                            (skip-row ()
-                              :report "Skip this row."
-                              (return)))))
-                 (vellum.header:set-row row)
-                 (cl-ds.alg.meta:pass-to-aggregation inner
-                                                     row)))))
+             (let ((row (vellum.header:make-row range element)))
+               (vellum.header:set-row row)
+               (cl-ds.alg.meta:pass-to-aggregation inner
+                                                   row))))
 
          ((cl-ds.alg.meta:extract-result inner))
 
