@@ -137,7 +137,8 @@
        (restart-case (vellum.header:check-predicate header i value)
          (set-to-null ()
            :report "Set the row position to :null."
-           (setf value :null))
+           (setf value :null)
+           (go main))
          (provide-new-value (v)
            :report "Enter the new value."
            :interactive vellum.header:read-new-value
