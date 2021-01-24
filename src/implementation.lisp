@@ -59,8 +59,7 @@
                  :includes-header-p includes-header-p
                  :separator separator
                  :header header)
-      (vellum:to-table _
-                       :body body
+      (vellum:to-table :body body
                        :class class)))
 
 
