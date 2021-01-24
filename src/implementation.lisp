@@ -136,6 +136,9 @@
          (setf value (from-string data-type elt))
          check
          (restart-case (vellum.header:check-predicate header i value)
+           (call-from-string-again ()
+             :report "Try converting string representation of the value again."
+             (go main))
            (set-to-null ()
              :report "Set the row position to :null."
              (setf value :null)
