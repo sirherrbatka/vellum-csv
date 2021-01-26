@@ -134,6 +134,12 @@
     (let ((value nil))
       (tagbody main
          (setf value (from-string data-type elt))
+         (unless (or (eq :null value)
+                     (typep value data-type))
+           (error 'vellum.column:column-type-error
+                  :expected-type data-type
+                  :column i
+                  :datum value))
          check
          (restart-case (vellum.header:check-predicate header i value)
            (call-from-string-again ()
