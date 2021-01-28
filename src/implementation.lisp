@@ -145,11 +145,11 @@
            (call-from-string-again ()
              :report "Try converting string representation of the value again."
              (go main))
-           (vellum.table:set-to-null ()
+           (vellum.header:set-to-null ()
              :report "Set the row position to :null."
              (setf value :null)
              (go check))
-           (vellum.table:provide-new-value (v)
+           (vellum.header:provide-new-value (v)
              :report "Enter the new value."
              :interactive vellum.header:read-new-value
              (setf value v)
