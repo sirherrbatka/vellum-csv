@@ -5,6 +5,7 @@
   (:use #:cl #:vellum.aux-package)
   (:export
    #:csv-range
+   #:call-from-string-again
    #:csv-format-error
    #:to-string
    #:from-string))
