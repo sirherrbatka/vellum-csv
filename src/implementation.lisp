@@ -39,7 +39,8 @@
   (declare (ignore options))
   (with-output-to-file (stream output)
     (vellum:copy-to format stream input
-                    :includes-header-p includes-header-p)))
+                    :includes-header-p includes-header-p))
+  input)
 
 
 (defmethod vellum:copy-from ((format (eql :csv))
@@ -103,7 +104,8 @@
 
 
 (defmethod to-string (type value)
-  (princ value nil))
+  (with-output-to-string (stream)
+    (princ value stream)))
 
 
 (defmethod from-string ((type (eql 'boolean)) string)
