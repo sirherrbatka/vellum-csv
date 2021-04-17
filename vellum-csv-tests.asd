@@ -1,8 +1,5 @@
-(cl:in-package #:cl-user)
-
-
 (asdf:defsystem #:vellum-csv/tests
-  :name "vellum csv tests"
+  :name "vellum-csv/tests"
   :version "0.0.0"
   :license "BSD simplified"
   :author "Marek Kochanowicz"
