@@ -64,6 +64,12 @@
                        :class class)))
 
 
+(defmethod to-string :around (type value)
+  (if (eq :null value)
+      ""
+      (call-next-method)))
+
+
 (defmethod from-string :around (type string)
   (if (or (emptyp string) (string= "NULL" string))
       :null
@@ -106,6 +112,10 @@
 (defmethod to-string (type value)
   (with-output-to-string (stream)
     (princ value stream)))
+
+
+(defmethod to-string ((type (eql 'boolean)) value)
+  (if value "True" "False"))
 
 
 (defmethod from-string ((type (eql 'boolean)) string)
