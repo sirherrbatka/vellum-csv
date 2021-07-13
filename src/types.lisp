@@ -6,10 +6,15 @@
   ((%includes-header-p :initarg :includes-header-p
                        :reader includes-header-p)
    (%separator :initarg :separator
-               :reader separator))
+               :reader separator)
+   (%quote :initarg :quote
+           :reader csv-quote))
   (:default-initargs
-   :separator #\,))
+   :separator #\,
+   :quote #\"))
 
 
 (defmethod cl-ds.utils:cloning-information append ((object csv-range))
-  '((:includes-header-p includes-header-p)))
+  '((:includes-header-p includes-header-p)
+    (:separator separator)
+    (:quote csv-quote)))
