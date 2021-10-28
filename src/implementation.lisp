@@ -16,7 +16,7 @@
         (finally (fare-csv:write-csv-line fields
                                           output))))
     (vellum:transform input
-                      (lambda ()
+                      (lambda (&rest all) (declare (ignore all))
                         (iterate
                           (for i from 0 below column-count)
                           (for data-type =
