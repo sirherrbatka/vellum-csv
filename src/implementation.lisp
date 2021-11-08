@@ -152,21 +152,7 @@
            (error 'vellum.column:column-type-error
                   :expected-type data-type
                   :column i
-                  :datum value))
-         check
-         (restart-case (vellum.header:check-predicate header i value)
-           (call-from-string-again ()
-             :report "Try converting string representation of the value again."
-             (go main))
-           (vellum.header:set-to-null ()
-             :report "Set the row position to :null."
-             (setf value :null)
-             (go check))
-           (vellum.header:provide-new-value (v)
-             :report "Enter the new value."
-             :interactive vellum.header:read-new-value
-             (setf value v)
-             (go check))))
+                  :datum value)))
       (setf (aref result i) value))
     (finally (return result))))
 
