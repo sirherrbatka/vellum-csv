@@ -49,13 +49,11 @@
                              &key
                              (includes-header-p t)
                              (class 'vellum.table:standard-table)
-                             (header-class 'vellum.header:standard-header)
                              (columns '())
                              (body nil)
                              (separator #\,)
                              (quote #\")
-                             (header (apply #'vellum.header:make-header
-                                            header-class columns)))
+                             (header (apply #'vellum.header:make-header columns)))
   (declare (ignore options))
   (~> (csv-range path/range
                  :includes-header-p includes-header-p
