@@ -2,9 +2,11 @@
 
 
 (defclass csv-range (vellum.header:frame-range-mixin
-                     cl-ds.alg:forward-proxy-range)
+                     cl-ds:traversable)
   ((%includes-header-p :initarg :includes-header-p
                        :reader includes-header-p)
+   (%path :initarg :path
+          :reader path)
    (%separator :initarg :separator
                :reader separator)
    (%quote :initarg :quote

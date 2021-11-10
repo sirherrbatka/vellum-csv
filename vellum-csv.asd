@@ -11,11 +11,11 @@
                 #:serapeum
                 (:version #:vellum ((>= "1.0.0")))
                 #:alexandria
-                #:documentation-utils-extensions
-                #:fare-csv)
+                #:documentation-utils-extensions)
   :serial T
   :pathname "src"
   :components ((:file "package")
+               (:file "csv")
                (:file "generics")
                (:file "types")
                (:file "functions")

@@ -13,8 +13,7 @@
         (for i from 0 below column-count)
         (collect (vellum:column-name input i)
           into fields)
-        (finally (fare-csv:write-csv-line fields
-                                          output))))
+        (finally (write-csv-line fields output))))
     (vellum:transform input
                       (lambda (&rest all) (declare (ignore all))
                         (iterate
@@ -25,8 +24,7 @@
                                         (to-string data-type))
                             into fields)
                           (finally
-                           (fare-csv:write-csv-line fields
-                                                    output))))
+                           (write-csv-line fields output))))
                       :in-place t)
     input))
 
@@ -131,52 +129,35 @@
     ("No" nil)))
 
 
-(defmethod vellum.header:make-row ((range csv-range)
-                                   string)
-  (iterate
-    (with header = (vellum.header:read-header range))
-    (with data = (let ((fare-csv:*separator* (separator range))
-                       (fare-csv:*quote* (csv-quote range)))
-                   (~> string
-                       make-string-input-stream
-                       fare-csv:read-csv-line)))
-    (with result = (~> data length make-array))
-    (for elt in data)
-    (for i from 0)
-    (for data-type = (vellum.header:column-type header i))
-    (let ((value nil))
-      (tagbody main
-         (setf value (from-string data-type elt))
-         (unless (or (eq :null value)
-                     (typep value data-type))
-           (error 'vellum.column:column-type-error
-                  :expected-type data-type
-                  :column i
-                  :datum value)))
-      (setf (aref result i) value))
-    (finally (return result))))
+(defmethod cl-ds:traverse ((object csv-range) function)
+  (with-open-file (stream (path object))
+    (when (includes-header-p object)
+      (read-line stream))
+    (let ((*separator* (separator object))
+          (*quote* (csv-quote object)))
+      (validate-csv-parameters)
+      (iterate
+        (with buffered-stream = (make-buffered-stream :stream stream))
+        (with header = (vellum.header:read-header object))
+        (while (buffered-stream-peek buffered-stream))
+        (for result = (read-csv-line buffered-stream))
+        (iterate
+          (for i from 0 below (length result))
+          (for data-type = (vellum.header:column-type header i))
+          (for elt = (aref result i))
+          (let ((value nil))
+            (tagbody main
+               (setf value (from-string data-type elt))
+               (unless (or (eq :null value)
+                           (typep value data-type))
+                 (error 'vellum.column:column-type-error
+                        :expected-type data-type
+                        :column i
+                        :datum value)))
+            (setf (aref result i) value))
+          (finally (funcall function result))))))
+  object)
 
 
-(defmethod cl-ds.alg.meta:aggregator-constructor ((range csv-range)
-                                                  outer-constructor
-                                                  (function cl-ds.alg.meta:aggregation-function)
-                                                  (arguments list))
-  (bind ((outer-fn (call-next-method))
-         (header (vellum.header:read-header range)))
-    (cl-ds.alg.meta:aggregator-constructor
-     (cl-ds.alg:read-original-range range)
-     (cl-ds.alg.meta:let-aggregator
-         ((inner (cl-ds.alg.meta:call-constructor outer-fn)))
-
-         ((element)
-           (vellum.header:with-header (header)
-             (let ((row (vellum.header:make-row range element)))
-               (vellum.header:set-row row)
-               (cl-ds.alg.meta:pass-to-aggregation inner
-                                                   row))))
-
-         ((cl-ds.alg.meta:extract-result inner))
-
-       (cl-ds.alg.meta:cleanup inner))
-     function
-     arguments)))
+(defmethod cl-ds:across ((object csv-range) function)
+  (cl-ds:traverse object function))
