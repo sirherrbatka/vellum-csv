@@ -152,13 +152,14 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
 (defmacro accept (x stream &optional (ensured nil))
   (once-only (stream)
     `(let ((c (buffered-stream-peek ,stream ,ensured)))
-       (and (etypecase ,x
+       (if (etypecase ,x
               (character (eql ,x c))
               ((or function symbol) (funcall ,x c))
               (integer (eql ,x (char-code c))))
            (progn
              (incf (buffered-stream-stream-position ,stream))
-             c)))))
+             c)
+           nil))))
 
 
 (declaim (inline accept-space))
@@ -171,7 +172,10 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
 
 (declaim (inline accept-spaces))
 (defun accept-spaces (stream)
-  (loop :for x = (accept-space stream) :while x :collect x))
+  (iterate
+    (for x = (accept-space stream))
+    (while x)
+    (collect x)))
 
 
 (defmacro accept-eof (stream &optional (ensured nil))
