@@ -59,7 +59,6 @@ M$, RFC says NIL, csv.3tcl says T")
   (assert (typep *keep-meta-info* 'boolean) ())
   (assert (typep *skip-whitespace* 'boolean) ()))
 
-;; For internal use only
 (defvar *accept-cr* t "internal: do we accept cr?")
 (defvar *accept-lf* t "internal: do we accept lf?")
 (defvar *accept-crlf* t "internal: do we accept crlf?")
@@ -179,15 +178,23 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
   `(not (buffered-stream-peek ,stream ,ensured)))
 
 
-(defun read-csv-line (stream)
+(defun read-csv-line (stream free-strings)
   (declare (type buffered-stream stream)
            (optimize (speed 3) (safety 0) (debug 0) (space 0) (compilation-speed 0)))
   "Read one line from STREAM in CSV format, using the current syntax parameters.
   Return a list of strings, one for each field in the line.
   Entries are read as strings;
   it is up to you to interpret the strings as whatever you want."
-  (bind ((ss (make-string-output-stream))
-         (fields (make-array 32 :element-type t
+  (bind ((string-pointer -1)
+         (fill-pointer 0)
+         ((:flet free-string ())
+          (incf (the fixnum string-pointer))
+          (unless (< string-pointer (fill-pointer free-strings))
+            (vector-push-extend (make-string 512) free-strings))
+          (setf fill-pointer 0)
+          (aref free-strings string-pointer))
+         (ss (free-string))
+         (fields (make-array 16 :element-type t
                                 :adjustable t
                                 :fill-pointer 0))
          (had-quotes nil)
@@ -200,23 +207,46 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
          (cr (buffered-stream-accept-cr stream))
          (lf (buffered-stream-accept-lf stream))
          (crlf (buffered-stream-accept-crlf stream))
-         ((:flet accept-eol (stream))
-          (block nil
-            (when (and cr (accept #\Linefeed stream)) (return t))
-            (when (or crlf lf)
-              (when (accept #\Return stream)
-                (when crlf
-                  (if (accept #\Linefeed stream t)
-                      (return t)
-                      (unless cr
-                        (error "Carriage-return without Linefeed!"))))
-                (return t)))
-            nil)))
-    (declare (type string-stream ss)
-             (type character separator quote)
-             (inline accept-eol))
-    (labels
-        ((do-fields ()
+         (argument nil))
+    (declare (type character separator quote))
+    (flet ((add (x)
+             (vector-push-extend
+              (if keep-meta-info
+                  (list x :quoted had-quotes)
+                  x)
+              fields))
+           (add-char (c)
+             (let* ((string ss)
+                    (size (length string)))
+               (declare (type simple-string string))
+               (when (= (the fixnum fill-pointer) (the fixnum size))
+                 (setf string (make-string (* size 2)))
+                 (map-into string #'identity (aref free-strings string-pointer))
+                 (setf (aref free-strings string-pointer) string
+                       ss string))
+               (setf (aref (the simple-string string) fill-pointer) c)
+               (incf (the fixnum fill-pointer))))
+           (current-string ()
+             (lret ((result (make-array fill-pointer
+                                        :element-type 'character
+                                        :displaced-to ss)))
+               (setf ss (free-string))))
+           (accept-eol (stream)
+             (block nil
+               (when (and cr (accept #\Linefeed stream)) (return t))
+               (when (or crlf lf)
+                 (when (accept #\Return stream)
+                   (when crlf
+                     (if (accept #\Linefeed stream t)
+                         (return t)
+                         (unless cr
+                           (error "Carriage-return without Linefeed!"))))
+                   (return t)))
+               nil)))
+      (declare (inline accept-eol add-char))
+      (tagbody
+       do-fields
+         (progn
            (setf had-quotes nil)
            (when skip-whitespace
              (accept-spaces stream))
@@ -224,23 +254,24 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
              ((and (= 0 (length fields))
                    (or (accept-eol stream)
                        (accept-eof stream t)))
-              (done))
+              (go done))
              (t
-              (do-field-start))))
-         (do-field-start ()
-           (cond
-             ((accept separator stream)
-              (add "") (do-fields))
-             ((accept quote stream t)
-              (cond
-                ((and unquoted-quotequote (accept quote stream))
-                 (add-char quote)
-                 (do-field-unquoted))
-                (t
-                 (do-field-quoted))))
-             (t
-              (do-field-unquoted))))
-         (do-field-quoted ()
+              (go do-field-start))))
+       do-field-start
+         (cond
+           ((accept separator stream)
+            (add "") (go do-fields))
+           ((accept quote stream t)
+            (cond
+              ((and unquoted-quotequote (accept quote stream))
+               (add-char quote)
+               (go do-field-unquoted))
+              (t
+               (go do-field-quoted))))
+           (t
+            (go do-field-unquoted)))
+       do-field-quoted
+         (progn
            (setf had-quotes t)
            (cond
              ((accept-eof stream)
@@ -248,80 +279,71 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
              ((accept quote stream t)
               (cond
                 ((accept quote stream)
-                 (quoted-field-char quote))
+                 (setf argument quote)
+                 (go quoted-field-char))
                 (loose-quote
-                 (do-field-unquoted))
+                 (go do-field-unquoted))
                 (t
                  (add (current-string))
-                 (end-of-field))))
+                 (go end-of-field))))
              (t
-              (quoted-field-char (buffered-stream-read stream t)))))
-         (quoted-field-char (c)
-           (add-char c)
-           (do-field-quoted))
-         (do-field-unquoted ()
-           (if skip-whitespace
-               (let ((spaces (accept-spaces stream)))
-                 (cond
-                   ((or (accept-eol stream)
-                        (accept-eof stream t))
-                    (add (current-string))
-                    (done))
-                   ((accept separator stream t)
-                    (add (current-string))
-                    (do-fields))
-                   (t
-                    (map () #'add-char spaces)
-                    (do-field-unquoted-no-skip))))
-               (do-field-unquoted-no-skip)))
-         (do-field-unquoted-no-skip ()
-           (cond
-             ((or (accept-eol stream)
-                  (accept-eof stream t))
-              (add (current-string))
-              (done))
-             ((accept separator stream t)
-              (add (current-string))
-              (do-fields))
-             ((accept quote stream t)
-              (cond
-                ((and unquoted-quotequote
-                      (accept quote stream))
-                 (add-char quote)
-                 (do-field-unquoted))
-                (loose-quote
-                 (do-field-quoted))
-                (t
-                 (error "unexpected quote in middle of field"))))
-             (t
-              (add-char (buffered-stream-read stream t))
-              (do-field-unquoted))))
-         (end-of-field ()
-           ;;#+DEBUG (format t "~&end-of-field~%")
+              (setf argument (buffered-stream-read stream t))
+              (go quoted-field-char))))
+       quoted-field-char
+         (progn
+           (add-char argument)
+           (go do-field-quoted))
+       do-field-unquoted
+         (if skip-whitespace
+             (let ((spaces (accept-spaces stream)))
+               (cond
+                 ((or (accept-eol stream)
+                      (accept-eof stream t))
+                  (add (current-string))
+                  (go done))
+                 ((accept separator stream t)
+                  (add (current-string))
+                  (go do-fields))
+                 (t
+                  (map () #'add-char spaces)
+                  (go do-field-unquoted-no-skip))))
+             (go do-field-unquoted-no-skip))
+       do-field-unquoted-no-skip
+         (cond
+           ((or (accept-eol stream)
+                (accept-eof stream t))
+            (add (current-string))
+            (go done))
+           ((accept separator stream t)
+            (add (current-string))
+            (go do-fields))
+           ((accept quote stream t)
+            (cond
+              ((and unquoted-quotequote
+                    (accept quote stream))
+               (add-char quote)
+               (go do-field-unquoted))
+              (loose-quote
+               (go do-field-quoted))
+              (t
+               (error "unexpected quote in middle of field"))))
+           (t
+            (add-char (buffered-stream-read stream t))
+            (go do-field-unquoted)))
+       end-of-field
+         (progn
            (when skip-whitespace
              (accept-spaces stream))
            (cond
              ((or (accept-eol stream)
                   (accept-eof stream t))
-              (done))
+              (go done))
              ((accept separator stream t)
-              (do-fields))
+              (go do-fields))
              (t
               (error "end of field expected"))))
-         (add (x)
-           (vector-push-extend
-            (if keep-meta-info
-                (list x :quoted had-quotes)
-                x)
-            fields))
-         (add-char (c)
-           (write-char c ss))
-         (current-string ()
-           (get-output-stream-string ss))
-         (done ()
-           fields))
-      (declare (inline add-char add))
-      (do-fields))))
+       done
+         (return-from read-csv-line fields)))))
 
 (defun char-needs-quoting (x)
   (or (eql x *quote*)

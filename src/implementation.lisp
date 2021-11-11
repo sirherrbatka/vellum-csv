@@ -86,12 +86,28 @@
   (parse-integer string))
 
 
+(defun copy-string (string)
+  (declare (type (and string (not simple-string))
+                 string)
+           (optimize (speed 3) (safety 0)))
+  (iterate
+    (declare (type fixnum size i)
+             (type simple-string result source))
+    (with source = (array-displacement string))
+    (with size = (length string))
+    (with result = (make-string size))
+    (for i from 0 below size)
+    (setf (aref result i) (aref source i))
+    (finally (return result))))
+
+
 (defmethod from-string ((type (eql 'string)) string)
-  string)
+  (copy-string string))
 
 
 (defmethod from-string ((type (eql 'float)) string)
   (parse-float string :type 'double-float))
+
 
 
 (defmethod from-string ((type (eql 'single-float)) string)
@@ -104,7 +120,7 @@
 
 
 (defmethod from-string ((type (eql t)) string)
-  string)
+  (copy-string string))
 
 
 (defmethod to-string (type value)
@@ -137,10 +153,11 @@
           (*quote* (csv-quote object)))
       (validate-csv-parameters)
       (iterate
+        (with strings = (vect))
         (with buffered-stream = (make-buffered-stream :stream stream))
         (with header = (vellum.header:read-header object))
         (while (buffered-stream-peek buffered-stream))
-        (for result = (read-csv-line buffered-stream))
+        (for result = (read-csv-line buffered-stream strings))
         (iterate
           (for i from 0 below (length result))
           (for data-type = (vellum.header:column-type header i))
