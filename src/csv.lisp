@@ -153,8 +153,8 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                (decf p start)
                (decf start start)
                (when (<= (- (length buffer) start) minimum-room)
-                 (setq buffer (adjust-array buffer (+ (length buffer) minimum-room)))
-                 (setq minimum-room (ash minimum-room 2)))
+                 (setf buffer (adjust-array buffer (+ (length buffer) minimum-room)))
+                 (setf minimum-room (ash minimum-room 2)))
                (setf fptr (read-sequence buffer stream :start p)))
              (report-result (start end &optional (value buffer))
                (funcall column-callback
@@ -170,7 +170,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                (when c
                  (incf p)
                  (when (= p fptr) (underflow)))
-               (setq c (if (= p fptr) nil (char buffer p))))
+               (setf c (if (= p fptr) nil (char buffer p))))
              (consume-whitespace ()
                (iterate
                  (while (char-space-p separator c))
