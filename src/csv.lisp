@@ -179,7 +179,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                (consume-whitespace)
                (cond ((eql quote c)
                       (consume)
-                      (read-dquote-field))
+                      (read-quote-field))
                      (t
                       (setq start p)
                       (iterate
@@ -187,7 +187,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                         (consume))
                       (report-result start p)))
                (consume-whitespace))
-             (read-dquote-field ()
+             (read-quote-field ()
                (let ((value (with-output-to-string (stream)
                               (iterate
                                 (for escaped = nil)
