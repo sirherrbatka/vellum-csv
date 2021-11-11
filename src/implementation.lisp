@@ -51,6 +51,7 @@
                              (unquoted-quotequote *unquoted-quotequote*)
                              (columns '())
                              (body nil)
+                             (skip-whitespace nil)
                              (separator #\,)
                              (quote #\")
                              (header (apply #'vellum.header:make-header columns)))
@@ -59,6 +60,7 @@
                  :includes-header-p includes-header-p
                  :separator separator
                  :quote quote
+                 :skip-whitespace skip-whitespace
                  :unquoted-quotequote unquoted-quotequote
                  :line-endings line-endings
                  :header header)
@@ -164,6 +166,7 @@
     (let* ((*separator* (separator object))
            (*line-endings* (line-endings object))
            (*unquoted-quotequote* (unquoted-quotequote object))
+           (*skip-whitespace* (skip-whitespace object))
            (*accept-cr* (not (null (member +cr+ *line-endings* :test #'equal))))
            (*accept-lf* (not (null (member +lf+ *line-endings* :test #'equal))))
            (*accept-crlf* (not (null (member +crlf+ *line-endings* :test #'equal))))
