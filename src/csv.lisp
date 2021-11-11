@@ -150,7 +150,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
 
 
 (defmacro accept (x stream &optional (ensured nil))
-  (once-only (stream)
+  (once-only (x stream)
     `(let ((c (buffered-stream-peek ,stream ,ensured)))
        (if (etypecase ,x
               (character (eql ,x c))
