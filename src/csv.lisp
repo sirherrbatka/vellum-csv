@@ -129,18 +129,18 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                 escape))
     (nreverse result)))
 
+
 (declaim (notinline read-csv))
 (defun read-csv (stream row-callback column-callback
                  separator quote escape)
   (declare (type character separator quote escape))
-  (let* ((minimum-room 4096)
+  (let* ((minimum-room +buffer-size+)
          (row-callback (ensure-function row-callback))
          (column-callback (ensure-function column-callback))
          (buffer (make-array (* 2 minimum-room) :element-type 'character))
          (columns-counter 0)
          (start 0)                      ;start of our current field
-         ;; fill pointer of buffer
-         (fptr 0)
+         (fptr 0)                       ;fill pointer of buffer
          (p -1)                         ;reading pointer
          (c #\space))                   ;lookahead
     (declare (type (simple-array character (*)) buffer)
@@ -183,10 +183,12 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                      (t
                       (setq start p)
                       (iterate
+                        (with end = start)
                         (until (or (null c) (eql c separator) (eql c #\newline)))
-                        (consume))
-                      (report-result start p)))
-               (consume-whitespace))
+                        (consume)
+                        (unless (char-space-p separator c)
+                          (setf end p))
+                        (finally (report-result start end))))))
              (read-quote-field ()
                (let ((value (with-output-to-string (stream)
                               (iterate
