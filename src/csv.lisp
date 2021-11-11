@@ -187,12 +187,12 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
 
 
 (defun read-csv-line (stream free-strings)
-  (declare (type buffered-stream stream)
-           (optimize (speed 3) (safety 0) (debug 0) (space 0) (compilation-speed 0)))
   "Read one line from STREAM in CSV format, using the current syntax parameters.
   Return a list of strings, one for each field in the line.
   Entries are read as strings;
   it is up to you to interpret the strings as whatever you want."
+  (declare (type buffered-stream stream)
+           (optimize (speed 3) (safety 0) (debug 0) (space 0) (compilation-speed 0)))
   (bind ((string-pointer -1)
          (fill-pointer 0)
          ((:flet free-string ())
