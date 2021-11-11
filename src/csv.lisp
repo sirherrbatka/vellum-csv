@@ -145,6 +145,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
 ;;  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 ;;  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 ;;  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+(declaim (inline read-csv))
 (defun read-csv (stream callback separator quote)
   (declare (type character separator quote))
   (let* ((minimum-room 4096)
