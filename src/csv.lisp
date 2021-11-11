@@ -159,7 +159,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
        (if (etypecase ,x
               (character (eql ,x c))
               ((or function symbol) (funcall ,x c))
-              (integer (eql ,x (char-code c))))
+              (fixnum (= ,x (char-code c))))
            (progn
              (incf (buffered-stream-stream-position ,stream))
              c)
