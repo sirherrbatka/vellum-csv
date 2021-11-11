@@ -86,39 +86,6 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
            (eql c #\Tab))
        (not (eql c separator))))
 
-
-(defmacro accept (x stream &optional (ensured nil))
-  (once-only (x stream)
-    `(let ((c (buffered-stream-peek ,stream ,ensured)))
-       (if (etypecase ,x
-              (character (eql ,x c))
-              ((or function symbol) (funcall ,x c))
-              (fixnum (= ,x (char-code c))))
-           (progn
-             (incf (buffered-stream-stream-position ,stream))
-             c)
-           nil))))
-
-
-(declaim (inline accept-space))
-(defun accept-space (stream)
-  (declare (type buffered-stream stream)
-           (optimize (speed 3) (safety 0) (debug 0) (space 0) (compilation-speed 0)))
-  (let ((separator (buffered-stream-separator stream)))
-    (accept (lambda (x) (char-space-p separator x)) stream)))
-
-
-(declaim (inline accept-spaces))
-(defun accept-spaces (stream)
-  (iterate
-    (for x = (accept-space stream))
-    (while x)
-    (collect x)))
-
-
-(defmacro accept-eof (stream &optional (ensured nil))
-  `(not (buffered-stream-peek ,stream ,ensured)))
-
 ;; ---------------------------------------------------------------------------
 ;;     Title: A very simple CSV Reader
 ;;   Created: 2021-11-11
@@ -183,13 +150,13 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                       (read-dquote-field))
                      (t
                       (setq start p)
-                      (loop until (member c `(,separator #\newline nil)) do (consume))
+                      (loop until (or (null c) (eql c separator) (eql c #\newline)) do (consume))
                       (funcall column-callback buffer start p))))
              (read-dquote-field ()
                (let ((value (format nil "~{~A~^\"~}"
                                     (loop collect (progn
                                                     (setq start p)
-                                                    (loop until (member c `(,quote nil)) do (consume))
+                                                    (loop until (or (null c) (eql c quote)) do (consume))
                                                     (subseq buffer start p))
                                           do (when (eql quote c) (consume))
                                           while (eql quote c) do (consume)))))
@@ -197,11 +164,14 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                             value
                             0
                             (length value))
-                 (assert (member c (list #\newline separator nil)))))
+                 (assert (or (null c) (eql #\newline c) (eql separator c)))))
              (read-row ()
                ;; Question: What is an empty line? One empty field, or no field?
                (prog1
-                   (loop collect (read-field) while (eql c separator) do (consume))
+                   (iterate
+                     (read-field)
+                     (while (eql c separator))
+                     (consume))
                  (ecase c ((#\newline nil)))
                  (consume))))
       (declare (inline underflow consume read-field read-row))
