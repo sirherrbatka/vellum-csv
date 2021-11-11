@@ -54,6 +54,7 @@
                                (class 'vellum.table:standard-table)
                                (columns '())
                                (body nil)
+                               (escape *escape*)
                                (separator *separator*)
                                (quote *quote*)
                                (header (apply #'vellum.header:make-header columns)))
@@ -61,6 +62,7 @@
   (~> (csv-range path/range
                  :includes-header-p includes-header-p
                  :separator separator
+                 :escape escape
                  :quote quote
                  :header header)
       (vellum:to-table :body body
@@ -162,6 +164,7 @@
   (with-stream-input (stream object)
     (let* ((*separator* (separator object))
            (*quote* (csv-quote object))
+           (*escape* (escape object))
            (includes-header-p (includes-header-p object))
            (header (vellum.header:read-header object))
            (first-iteration t)
@@ -189,7 +192,8 @@
                       (setf (aref result i) value)
                       (incf i))))
                 *separator*
-                *quote*)))
+                *quote*
+                *escape*)))
   object)
 
 

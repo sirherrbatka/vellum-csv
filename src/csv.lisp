@@ -26,6 +26,8 @@
   nil nil
       "does a pair of quotes represent a quote outside of quotes?
 M$, RFC says NIL, csv.3tcl says T")
+    (define *escape* #\" #\"
+      "Character used for escaping strings.")
     (define *loose-quote*
   nil nil
       "can quotes appear anywhere in a field?")
@@ -112,10 +114,25 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
 ;;  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 ;;  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 ;;  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-(declaim (inline read-csv))
+(defun csv-to-list (string separator quote escape)
+  (let ((result (list))
+        (row (list)))
+    (with-input-from-string (stream string)
+      (read-csv stream
+                (lambda ()
+                  (push (nreverse row) result)
+                  (setf row (list)))
+                (lambda (value start end)
+                  (push (subseq value start end) row))
+                separator
+                quote
+                escape))
+    (nreverse result)))
+
+(declaim (notinline read-csv))
 (defun read-csv (stream row-callback column-callback
-                 separator quote)
-  (declare (type character separator quote))
+                 separator quote escape)
+  (declare (type character separator quote escape))
   (let* ((minimum-room 4096)
          (row-callback (ensure-function row-callback))
          (column-callback (ensure-function column-callback))
@@ -126,45 +143,76 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
          (p -1)                         ;reading pointer
          (c #\space))                   ;lookahead
     (declare (type (simple-array character (*)) buffer)
+             (type (or null character) c)
              (type fixnum start fptr p minimum-room)
-             (optimize (speed 3) (safety 0)))
+             (optimize (speed 3) (safety 0) (compilation-speed 0)
+                       (space 0) (debug 0)))
     (labels ((underflow ()
                (replace buffer buffer :start2 start :end2 p)
                (decf p start)
                (decf start start)
-               (cond ((stringp stream)
-                      (setq fptr p))
-                     (t
-                      (when (<= (- (length buffer) start) minimum-room)
-                        (setq buffer (adjust-array buffer (+ (length buffer) minimum-room)))
-                        (setq minimum-room (* minimum-room 2)))
-                      (setf fptr (read-sequence buffer stream :start p)))))
+               (when (<= (- (length buffer) start) minimum-room)
+                 (setq buffer (adjust-array buffer (+ (length buffer) minimum-room)))
+                 (setq minimum-room (ash minimum-room 2)))
+               (setf fptr (read-sequence buffer stream :start p)))
              (consume ()
                (when c
                  (incf p)
                  (when (= p fptr) (underflow)))
                (setq c (if (= p fptr) nil (char buffer p))))
+             (consume-whitespace ()
+               (iterate
+                 (while (char-space-p separator c))
+                 (consume)))
              (read-field ()
+               (consume-whitespace)
                (cond ((eql quote c)
                       (consume)
                       (read-dquote-field))
                      (t
                       (setq start p)
                       (loop until (or (null c) (eql c separator) (eql c #\newline)) do (consume))
-                      (funcall column-callback buffer start p))))
+                      (funcall column-callback buffer start p)))
+               (consume-whitespace))
              (read-dquote-field ()
-               (let ((value (format nil "~{~A~^\"~}"
-                                    (loop collect (progn
-                                                    (setq start p)
-                                                    (loop until (or (null c) (eql c quote)) do (consume))
-                                                    (subseq buffer start p))
-                                          do (when (eql quote c) (consume))
-                                          while (eql quote c) do (consume)))))
-                   (funcall column-callback
-                            value
-                            0
-                            (length value))
-                 (assert (or (null c) (eql #\newline c) (eql separator c)))))
+               (let ((value (with-output-to-string (stream)
+                              (iterate
+                                (for escaped = nil)
+                                (until (null c))
+                                (when (and (not escaped)
+                                           (eql c escape))
+                                  (consume)
+                                  (setf escaped t))
+                                (if (eql quote escape)
+                                    (if escaped
+                                        (cond ((eql c quote)
+                                               (princ c stream)
+                                               (consume))
+                                              ((or (eql c separator)
+                                                   (eql c #\newline))
+                                               (finish))
+                                              (t (consume-whitespace)
+                                                 (finish)))
+                                        (cond ((eql c quote)
+                                               (consume)
+                                               (finish))
+                                              (t (princ c stream)
+                                                 (consume))))
+                                    (cond (escaped
+                                           (princ c stream)
+                                           (consume))
+                                          ((eql c quote)
+                                           (consume)
+                                           (finish))
+                                          (t (princ c stream)
+                                             (consume))))))))
+                 (funcall column-callback
+                          value
+                          0
+                          (length value))
+                 (assert (or (null c)
+                             (eql #\newline c)
+                             (eql separator c)))))
              (read-row ()
                ;; Question: What is an empty line? One empty field, or no field?
                (prog1
@@ -174,11 +222,12 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                      (consume))
                  (ecase c ((#\newline nil)))
                  (consume))))
-      (declare (inline underflow consume read-field read-row))
+      (declare (inline underflow consume read-field read-row consume-whitespace))
       (consume)
-      (loop until (null c) :do (progn
-                                 (read-row)
-                                 (funcall row-callback))))))
+      (iterate
+        (until (null c))
+        (read-row)
+        (funcall row-callback)))))
 
 
 (defun char-needs-quoting (x)

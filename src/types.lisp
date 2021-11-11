@@ -10,14 +10,14 @@
    (%separator :initarg :separator
                :reader separator)
    (%quote :initarg :quote
-           :reader csv-quote))
-  (:default-initargs
-   :separator *separator*
-   :quote *quote*))
+           :reader csv-quote)
+   (%escape :initarg :escape
+            :reader escape)))
 
 
 (defmethod cl-ds.utils:cloning-information append ((object csv-range))
   '((:includes-header-p includes-header-p)
+    (:escape escape)
     (:separator separator)
     (:path path)
     (:quote csv-quote)))
