@@ -180,16 +180,14 @@
           (for i from 0 below (length result))
           (for data-type = (vellum.header:column-type header i))
           (for elt = (aref result i))
-          (let ((value nil))
-            (tagbody main
-               (setf value (from-string data-type elt))
-               (unless (or (eq :null value)
-                           (typep value data-type))
-                 (error 'vellum.column:column-type-error
-                        :expected-type data-type
-                        :column i
-                        :datum value)))
-            (setf (aref result i) value))
+          (for value = (from-string data-type elt))
+          (unless (or (eq :null value)
+                      (typep value data-type))
+            (error 'vellum.column:column-type-error
+                   :expected-type data-type
+                   :column i
+                   :datum value))
+          (setf (aref result i) value)
           (finally (funcall function result))))))
   object)
 
