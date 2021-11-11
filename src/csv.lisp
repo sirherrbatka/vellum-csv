@@ -38,6 +38,9 @@ M$, RFC says NIL, csv.3tcl says T")
     (define *skip-whitespace*
   nil t
       "shall we skip unquoted whitespace around separators?")
+    (define *line-endings*
+      (list +crlf+ +lf+) (list +cr+ +lf+ +crlf+)
+      "acceptable line endings when importing CSV")
     (define *eol*
       +lf+ +crlf+
       "line ending when exporting CSV")
@@ -56,6 +59,7 @@ M$, RFC says NIL, csv.3tcl says T")
   (assert (typep *unquoted-quotequote* 'boolean) ())
   (assert (typep *loose-quote* 'boolean) ())
   (assert (valid-eol-p *eol*) ())
+  (assert (and *line-endings* (every #'valid-eol-p *line-endings*)) ())
   (assert (typep *keep-meta-info* 'boolean) ())
   (assert (typep *skip-whitespace* 'boolean) ()))
 

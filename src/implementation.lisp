@@ -47,6 +47,8 @@
                              &key
                              (includes-header-p t)
                              (class 'vellum.table:standard-table)
+                             (line-endings *line-endings*)
+                             (unquoted-quotequote *unquoted-quotequote*)
                              (columns '())
                              (body nil)
                              (separator #\,)
@@ -57,6 +59,8 @@
                  :includes-header-p includes-header-p
                  :separator separator
                  :quote quote
+                 :unquoted-quotequote unquoted-quotequote
+                 :line-endings line-endings
                  :header header)
       (vellum:to-table :body body
                        :class class)))
@@ -145,12 +149,24 @@
     ("No" nil)))
 
 
+(defmacro with-stream-input ((stream range) &body body)
+  (with-gensyms (!stream)
+    `(let* ((,stream (cl-ds.fs:open-stream-designator (path ,range)))
+            (,!stream ,stream))
+       (unwind-protect
+            ,@body
+         (close ,!stream)))))
+
+
 (defmethod cl-ds:traverse ((object csv-range) function)
-  (with-open-file (stream (path object))
-    (when (includes-header-p object)
-      (read-line stream))
-    (let ((*separator* (separator object))
-          (*quote* (csv-quote object)))
+  (with-stream-input (stream object)
+    (let* ((*separator* (separator object))
+           (*line-endings* (line-endings object))
+           (*unquoted-quotequote* (unquoted-quotequote object))
+           (*accept-cr* (not (null (member +cr+ *line-endings* :test #'equal))))
+           (*accept-lf* (not (null (member +lf+ *line-endings* :test #'equal))))
+           (*accept-crlf* (not (null (member +crlf+ *line-endings* :test #'equal))))
+           (*quote* (csv-quote object)))
       (validate-csv-parameters)
       (iterate
         (with strings = (vect))
@@ -158,6 +174,8 @@
         (with header = (vellum.header:read-header object))
         (while (buffered-stream-peek buffered-stream))
         (for result = (read-csv-line buffered-stream strings))
+        (when (and (first-iteration-p) (includes-header-p object))
+          (next-iteration))
         (iterate
           (for i from 0 below (length result))
           (for data-type = (vellum.header:column-type header i))
