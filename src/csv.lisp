@@ -181,7 +181,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                       (consume)
                       (read-quote-field))
                      (t
-                      (setq start p)
+                      (setf start p)
                       (iterate
                         (with end = start)
                         (until (or (null c) (eql c separator) (eql c #\newline)))
