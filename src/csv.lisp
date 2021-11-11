@@ -137,6 +137,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
          (row-callback (ensure-function row-callback))
          (column-callback (ensure-function column-callback))
          (buffer (make-array (* 2 minimum-room) :element-type 'character))
+         (columns-counter 0)
          (start 0)                      ;start of our current field
          ;; fill pointer of buffer
          (fptr 0)
@@ -144,7 +145,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
          (c #\space))                   ;lookahead
     (declare (type (simple-array character (*)) buffer)
              (type (or null character) c)
-             (type fixnum start fptr p minimum-room)
+             (type fixnum start fptr p minimum-room columns-counter)
              (optimize (speed 3) (safety 0) (compilation-speed 0)
                        (space 0) (debug 0)))
     (labels ((underflow ()
@@ -155,6 +156,16 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                  (setq buffer (adjust-array buffer (+ (length buffer) minimum-room)))
                  (setq minimum-room (ash minimum-room 2)))
                (setf fptr (read-sequence buffer stream :start p)))
+             (report-result (start end &optional (value buffer))
+               (funcall column-callback
+                        value
+                        start
+                        end)
+               (incf columns-counter))
+             (report-row ()
+               (unless (zerop columns-counter)
+                 (funcall row-callback))
+               (setf columns-counter 0))
              (consume ()
                (when c
                  (incf p)
@@ -174,7 +185,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                       (iterate
                         (until (or (null c) (eql c separator) (eql c #\newline)))
                         (consume))
-                      (funcall column-callback buffer start p)))
+                      (report-result start p)))
                (consume-whitespace))
              (read-dquote-field ()
                (let ((value (with-output-to-string (stream)
@@ -204,29 +215,25 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                                            (finish))
                                           (t (princ c stream)
                                              (consume))))))))
-                 (funcall column-callback
-                          value
-                          0
-                          (length value))
+                 (report-result 0 (length value) value)
                  (consume-whitespace)
                  (assert (or (null c)
                              (eql #\newline c)
                              (eql separator c)))))
              (read-row ()
-               ;; Question: What is an empty line? One empty field, or no field?
-               (prog1
-                   (iterate
-                     (read-field)
-                     (while (eql c separator))
-                     (consume))
-                 (ecase c ((#\newline nil)))
-                 (consume))))
-      (declare (inline underflow consume read-field read-row consume-whitespace))
+               (iterate
+                 (read-field)
+                 (while (eql c separator))
+                 (consume))
+               (ecase c ((#\newline nil)))
+               (consume)))
+      (declare (inline underflow consume read-field read-row
+                       consume-whitespace report-result))
       (consume)
       (iterate
         (until (null c))
         (read-row)
-        (funcall row-callback)))))
+        (report-row)))))
 
 
 (defun char-needs-quoting (x)
