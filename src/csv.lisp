@@ -237,7 +237,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                (when (or crlf lf)
                  (when (accept #\Return stream)
                    (when crlf
-                     (if (accept #\Linefeed stream t)
+                     (if (accept #\Linefeed stream)
                          (return t)
                          (unless cr
                            (error "Carriage-return without Linefeed!"))))
