@@ -69,72 +69,6 @@ M$, RFC says NIL, csv.3tcl says T")
 
 (define-constant +buffer-size+ 4096)
 
-(defstruct buffered-stream
-  stream
-  (buffer (make-array +buffer-size+ :element-type 'character) :type simple-string)
-  (stream-position +buffer-size+ :type fixnum)
-  (buffer-end 0 :type fixnum)
-  (all-read nil :type boolean)
-  (separator *separator* :type character)
-  (quote *quote* :type character)
-  (accept-lf *accept-lf* :type boolean)
-  (accept-crlf *accept-crlf* :type boolean)
-  (accept-cr *accept-cr* :type boolean)
-  (skip-whitespace *skip-whitespace* :type boolean)
-  (loose-quote *loose-quote* :type boolean)
-  (unquoted-quotequote *unquoted-quotequote* :type boolean)
-  (keep-meta-info *keep-meta-info* :type boolean))
-
-(declaim (inline buffered-stream-buffer))
-(declaim (inline buffered-stream-stream-position))
-(declaim (inline buffered-stream-buffer-end))
-(declaim (inline buffered-stream-stream))
-(declaim (inline buffered-stream-separator))
-(declaim (inline buffered-stream-quote))
-(declaim (inline buffered-stream-skip-whitespace))
-(declaim (inline buffered-stream-accept-cr))
-(declaim (inline buffered-stream-accept-crlf))
-(declaim (inline buffered-stream-accept-lf))
-(declaim (inline buffered-stream-loose-quote))
-(declaim (inline buffered-stream-unquoted-quotequote))
-
-(defun buffered-stream-fill-buffer (stream)
-  (setf (buffered-stream-buffer-end stream) (read-sequence (buffered-stream-buffer stream)
-                                                           (buffered-stream-stream stream))
-        (buffered-stream-stream-position stream) 0
-        (buffered-stream-all-read stream) (not (= (buffered-stream-buffer-end stream) +buffer-size+))))
-
-(declaim (inline buffered-stream-ensure-buffer))
-(defun buffered-stream-ensure-buffer (stream)
-  (declare (type buffered-stream stream)
-           (optimize (speed 3) (safety 0) (debug 0) (space 0) (compilation-speed 0)))
-  (if (< (buffered-stream-stream-position stream)
-         (buffered-stream-buffer-end stream))
-      t
-      (if (buffered-stream-all-read stream)
-          nil
-          (progn
-            (buffered-stream-fill-buffer stream)
-            t))))
-
-(defmacro buffered-stream-read (stream &optional (ensured nil))
-  (once-only (stream)
-    `(block nil
-       ,(unless ensured
-          `(unless (buffered-stream-ensure-buffer ,stream)
-             (return buffered-stream-read nil)))
-       (let ((c (aref (buffered-stream-buffer ,stream) (buffered-stream-stream-position ,stream))))
-         (incf (buffered-stream-stream-position ,stream))
-         (return c)))))
-
-(defmacro buffered-stream-peek (stream &optional (ensured nil))
-  (once-only (stream)
-    `(block nil
-       ,(unless ensured
-          `(unless (buffered-stream-ensure-buffer ,stream)
-             (return nil)))
-       (return (aref (buffered-stream-buffer ,stream) (buffered-stream-stream-position ,stream))))))
-
 ; -----------------------------------------------------------------------------
 
 (declaim (inline char-space-p))
@@ -185,171 +119,89 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
 (defmacro accept-eof (stream &optional (ensured nil))
   `(not (buffered-stream-peek ,stream ,ensured)))
 
+;; ---------------------------------------------------------------------------
+;;     Title: A very simple CSV Reader
+;;   Created: 2021-11-11
+;;    Author: Gilbert Baumann
+;;   License: MIT style (see below)
+;; ---------------------------------------------------------------------------
+;;;  (c) copyright 2021 by Gilbert Baumann
 
-(declaim (inline read-csv-line))
-(defun read-csv-line (stream free-strings cr lf crlf)
-  "Read one line from STREAM in CSV format, using the current syntax parameters.
-  Return a list of strings, one for each field in the line.
-  Entries are read as strings;
-  it is up to you to interpret the strings as whatever you want."
-  (declare (type buffered-stream stream)
-           (optimize (speed 3) (safety 0) (debug 0) (space 0) (compilation-speed 0)))
-  (bind ((string-pointer -1)
-         (fill-pointer 0)
-         ((:flet free-string ())
-          (incf (the fixnum string-pointer))
-          (unless (< string-pointer (fill-pointer free-strings))
-            (vector-push-extend (make-string 512) free-strings))
-          (setf fill-pointer 0)
-          (aref free-strings string-pointer))
-         (ss (free-string))
-         (fields (make-array 16 :element-type t
-                                :adjustable t
-                                :fill-pointer 0))
-         (had-quotes nil)
-         (unquoted-quotequote (buffered-stream-unquoted-quotequote stream))
-         (quote (buffered-stream-quote stream))
-         (separator (buffered-stream-separator stream))
-         (loose-quote (buffered-stream-loose-quote stream))
-         (skip-whitespace (buffered-stream-skip-whitespace stream))
-         (keep-meta-info (buffered-stream-keep-meta-info stream))
-         (argument nil))
-    (declare (type character separator quote))
-    (flet ((add (x)
-             (vector-push-extend
-              (if keep-meta-info
-                  (list x :quoted had-quotes)
-                  x)
-              fields))
-           (add-char (c)
-             (let* ((string ss)
-                    (size (length string)))
-               (declare (type simple-string string))
-               (when (= (the fixnum fill-pointer) (the fixnum size))
-                 (setf string (make-string (* size 2)))
-                 (map-into string #'identity (aref free-strings string-pointer))
-                 (setf (aref free-strings string-pointer) string
-                       ss string))
-               (setf (aref (the simple-string string) fill-pointer) c)
-               (incf (the fixnum fill-pointer))))
-           (current-string ()
-             (lret ((result (make-array fill-pointer
-                                        :element-type 'character
-                                        :displaced-to ss)))
-               (setf ss (free-string))))
-           (accept-eol (stream)
-             (block nil
-               (when (and cr (accept #\Linefeed stream)) (return t))
-               (when (or crlf lf)
-                 (when (accept #\Return stream)
-                   (when crlf
-                     (if (accept #\Linefeed stream)
-                         (return t)
-                         (unless cr
-                           (error "Carriage-return without Linefeed!"))))
-                   (return t)))
-               nil)))
-      (declare (inline accept-eol add-char))
-      (tagbody
-       do-fields
-         (progn
-           (setf had-quotes nil)
-           (when skip-whitespace
-             (accept-spaces stream))
-           (cond
-             ((and (= 0 (length fields))
-                   (or (accept-eol stream)
-                       (accept-eof stream t)))
-              (go done))
-             (t
-              (go do-field-start))))
-       do-field-start
-         (cond
-           ((accept separator stream)
-            (add "") (go do-fields))
-           ((accept quote stream t)
-            (cond
-              ((and unquoted-quotequote (accept quote stream))
-               (add-char quote)
-               (go do-field-unquoted))
-              (t
-               (go do-field-quoted))))
-           (t
-            (go do-field-unquoted)))
-       do-field-quoted
-         (progn
-           (setf had-quotes t)
-           (cond
-             ((accept-eof stream)
-              (error "unexpected end of stream in quotes"))
-             ((accept quote stream t)
-              (cond
-                ((accept quote stream)
-                 (setf argument quote)
-                 (go quoted-field-char))
-                (loose-quote
-                 (go do-field-unquoted))
-                (t
-                 (add (current-string))
-                 (go end-of-field))))
-             (t
-              (setf argument (buffered-stream-read stream t))
-              (go quoted-field-char))))
-       quoted-field-char
-         (progn
-           (add-char argument)
-           (go do-field-quoted))
-       do-field-unquoted
-         (if skip-whitespace
-             (let ((spaces (accept-spaces stream)))
-               (cond
-                 ((or (accept-eol stream)
-                      (accept-eof stream t))
-                  (add (current-string))
-                  (go done))
-                 ((accept separator stream t)
-                  (add (current-string))
-                  (go do-fields))
-                 (t
-                  (map () #'add-char spaces)
-                  (go do-field-unquoted-no-skip))))
-             (go do-field-unquoted-no-skip))
-       do-field-unquoted-no-skip
-         (cond
-           ((or (accept-eol stream)
-                (accept-eof stream t))
-            (add (current-string))
-            (go done))
-           ((accept separator stream t)
-            (add (current-string))
-            (go do-fields))
-           ((accept quote stream t)
-            (cond
-              ((and unquoted-quotequote
-                    (accept quote stream))
-               (add-char quote)
-               (go do-field-unquoted))
-              (loose-quote
-               (go do-field-quoted))
-              (t
-               (error "unexpected quote in middle of field"))))
-           (t
-            (add-char (buffered-stream-read stream t))
-            (go do-field-unquoted)))
-       end-of-field
-         (progn
-           (when skip-whitespace
-             (accept-spaces stream))
-           (cond
-             ((or (accept-eol stream)
-                  (accept-eof stream t))
-              (go done))
-             ((accept separator stream t)
-              (go do-fields))
-             (t
-              (error "end of field expected"))))
-       done
-         (return-from read-csv-line fields)))))
+;;  Permission is hereby granted, free of charge, to any person obtaining
+;;  a copy of this software and associated documentation files (the
+;;  "Software"), to deal in the Software without restriction, including
+;;  without limitation the rights to use, copy, modify, merge, publish,
+;;  distribute, sublicense, and/or sell copies of the Software, and to
+;;  permit persons to whom the Software is furnished to do so, subject to
+;;  the following conditions:
+;;
+;;  The above copyright notice and this permission notice shall be
+;;  included in all copies or substantial portions of the Software.
+;;
+;;  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;;  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+;;  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+;;  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+;;  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+;;  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+;;  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+(defun read-csv (stream callback separator quote)
+  (declare (type character separator quote))
+  (let* ((minimum-room 4096)
+         (callback (ensure-function callback))
+         (buffer (make-array (* 2 minimum-room) :element-type 'character))
+         (start 0)                      ;start of our current field
+         ;; fill pointer of buffer
+         (fptr 0)
+         (p -1)                         ;reading pointer
+         (c #\space))                   ;lookahead
+    (declare (type (simple-array character (*)) buffer)
+             (type fixnum start fptr p minimum-room)
+             (optimize (speed 3) (safety 0)))
+    (labels ((underflow ()
+               (replace buffer buffer :start2 start :end2 p)
+               (decf p start)
+               (decf start start)
+               (cond ((stringp stream)
+                      (setq fptr p))
+                     (t
+                      (when (<= (- (length buffer) start) minimum-room)
+                        (setq buffer (adjust-array buffer (+ (length buffer) minimum-room)))
+                        (setq minimum-room (* minimum-room 2)))
+                      (setf fptr (read-sequence buffer stream :start p)))))
+             (consume ()
+               (when c
+                 (incf p)
+                 (when (= p fptr) (underflow)))
+               (setq c (if (= p fptr) nil (char buffer p))))
+             (read-field ()
+               (cond ((eql #\" c)
+                      (consume)
+                      (read-dquote-field))
+                     (t
+                      (setq start p)
+                      (loop until (member c `(,separator #\newline nil)) do (consume))
+                      (subseq buffer start p))))
+             (read-dquote-field ()
+               (prog1
+                   (format nil "~{~A~^\"~}"
+                           (loop collect (progn
+                                           (setq start p)
+                                           (loop until (member c `(,quote nil)) do (consume))
+                                           (subseq buffer start p))
+                                 do (when (eql quote c) (consume))
+                                 while (eql quote c) do (consume)))
+                 (assert (member c (list #\newline separator nil)))))
+             (read-row ()
+               ;; Question: What is an empty line? One empty field, or no field?
+               (prog1
+                   (loop collect (read-field) while (eql c separator) do (consume))
+                 (ecase c ((#\newline nil)))
+                 (consume))))
+      (declare (inline underflow consume read-field read-row))
+      (consume)
+      (loop until (null c) :do (funcall callback (read-row))))))
+
 
 (defun char-needs-quoting (x)
   (or (eql x *quote*)

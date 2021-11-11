@@ -5,9 +5,16 @@
                            (output stream)
                            input
                            &rest options
-                           &key (includes-header-p t))
+                           &key
+                             (includes-header-p t)
+                             (separator *separator*)
+                             (skip-whitespace *skip-whitespace*)
+                             (eol *eol*))
   (declare (ignore options))
-  (let ((column-count (vellum:column-count input)))
+  (let ((column-count (vellum:column-count input))
+        (*separator* separator)
+        (*skip-whitespace* skip-whitespace)
+        (*eol* eol))
     (when includes-header-p
       (iterate
         (for i from 0 below column-count)
@@ -15,7 +22,7 @@
           into fields)
         (finally (write-csv-line fields output))))
     (vellum:transform input
-                      (lambda (&rest all) (declare (ignore all))
+                      (vellum:bind-row ()
                         (iterate
                           (for i from 0 below column-count)
                           (for data-type =
@@ -33,11 +40,9 @@
                            output
                            input
                            &rest options
-                           &key (includes-header-p t))
-  (declare (ignore options))
+                           &key &allow-other-keys)
   (with-output-to-file (stream output)
-    (vellum:copy-to format stream input
-                    :includes-header-p includes-header-p))
+    (apply #'vellum:copy-to format stream input options))
   input)
 
 
@@ -45,24 +50,18 @@
                              path/range
                              &rest options
                              &key
-                             (includes-header-p t)
-                             (class 'vellum.table:standard-table)
-                             (line-endings *line-endings*)
-                             (unquoted-quotequote *unquoted-quotequote*)
-                             (columns '())
-                             (body nil)
-                             (skip-whitespace nil)
-                             (separator #\,)
-                             (quote #\")
-                             (header (apply #'vellum.header:make-header columns)))
+                               (includes-header-p t)
+                               (class 'vellum.table:standard-table)
+                               (columns '())
+                               (body nil)
+                               (separator *separator*)
+                               (quote *quote*)
+                               (header (apply #'vellum.header:make-header columns)))
   (declare (ignore options))
   (~> (csv-range path/range
                  :includes-header-p includes-header-p
                  :separator separator
                  :quote quote
-                 :skip-whitespace skip-whitespace
-                 :unquoted-quotequote unquoted-quotequote
-                 :line-endings line-endings
                  :header header)
       (vellum:to-table :body body
                        :class class)))
@@ -108,7 +107,7 @@
 
 
 (defmethod from-string ((type (eql 'string)) string)
-  (copy-string string))
+  string)
 
 
 (defmethod from-string ((type (eql 'float)) string)
@@ -126,7 +125,7 @@
 
 
 (defmethod from-string ((type (eql t)) string)
-  (copy-string string))
+  string)
 
 
 (defmethod to-string (type value)
@@ -161,44 +160,37 @@
 
 
 (defmethod cl-ds:traverse ((object csv-range) function)
-  (declare (optimize (speed 3) (space 0) (compilation-speed 0)))
   (with-stream-input (stream object)
     (let* ((*separator* (separator object))
-           (*line-endings* (line-endings object))
-           (*unquoted-quotequote* (unquoted-quotequote object))
-           (*skip-whitespace* (skip-whitespace object))
-           (*accept-cr* (not (null (member +cr+ *line-endings* :test #'equal))))
-           (*accept-lf* (not (null (member +lf+ *line-endings* :test #'equal))))
-           (*accept-crlf* (not (null (member +crlf+ *line-endings* :test #'equal))))
            (*quote* (csv-quote object))
-           (cr *accept-cr*)
-           (lf *accept-lf*)
-           (crlf *accept-crlf*))
+           (includes-header-p (includes-header-p object))
+           (header (vellum.header:read-header object))
+           (first-iteration t))
       (validate-csv-parameters)
-      (cl-ds.utils:cases (cr lf crlf)
-        (iterate
-          (with strings = (vect))
-          (with buffered-stream = (make-buffered-stream :stream stream))
-          (with header = (vellum.header:read-header object))
-          (while (buffered-stream-peek buffered-stream))
-          (for result = (read-csv-line buffered-stream strings
-                                       cr lf crlf))
-          (when (and (first-iteration-p) (includes-header-p object))
-            (next-iteration))
-          (iterate
-            (declare (type fixnum i))
-            (for i from 0 below (length result))
-            (for data-type = (vellum.header:column-type header i))
-            (for elt = (aref result i))
-            (for value = (from-string data-type elt))
-            (unless (or (eq :null value)
-                        (typep value data-type))
-              (error 'vellum.column:column-type-error
-                     :expected-type data-type
-                     :column i
-                     :datum value))
-            (setf (aref result i) value)
-            (finally (funcall function result)))))))
+      (read-csv stream
+                (lambda (row)
+                  (declare (type list row)
+                           (optimize (speed 3) (safety 0)))
+                  (unless (and includes-header-p first-iteration)
+                    (iterate
+                      (declare (type fixnum i))
+                      (with length = (length row))
+                      (with result = (make-array length))
+                      (for i from 0 below length)
+                      (for data-type = (vellum.header:column-type header i))
+                      (for elt in row)
+                      (for value = (from-string data-type elt))
+                      (unless (or (eq :null value)
+                                  (typep value data-type))
+                        (error 'vellum.column:column-type-error
+                               :expected-type data-type
+                               :column i
+                               :datum value))
+                      (setf (aref result i) value)
+                      (finally (funcall function result))))
+                  (setf first-iteration nil))
+                *separator*
+                *quote*)))
   object)
 
 
