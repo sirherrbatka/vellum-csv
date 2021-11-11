@@ -171,7 +171,9 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                       (read-dquote-field))
                      (t
                       (setq start p)
-                      (loop until (or (null c) (eql c separator) (eql c #\newline)) do (consume))
+                      (iterate
+                        (until (or (null c) (eql c separator) (eql c #\newline)))
+                        (consume))
                       (funcall column-callback buffer start p)))
                (consume-whitespace))
              (read-dquote-field ()
@@ -188,11 +190,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                                         (cond ((eql c quote)
                                                (princ c stream)
                                                (consume))
-                                              ((or (eql c separator)
-                                                   (eql c #\newline))
-                                               (finish))
-                                              (t (consume-whitespace)
-                                                 (finish)))
+                                              (t (finish)))
                                         (cond ((eql c quote)
                                                (consume)
                                                (finish))
@@ -210,6 +208,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                           value
                           0
                           (length value))
+                 (consume-whitespace)
                  (assert (or (null c)
                              (eql #\newline c)
                              (eql separator c)))))
