@@ -186,7 +186,8 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
   `(not (buffered-stream-peek ,stream ,ensured)))
 
 
-(defun read-csv-line (stream free-strings)
+(declaim (inline read-csv-line))
+(defun read-csv-line (stream free-strings cr lf crlf)
   "Read one line from STREAM in CSV format, using the current syntax parameters.
   Return a list of strings, one for each field in the line.
   Entries are read as strings;
@@ -212,9 +213,6 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
          (loose-quote (buffered-stream-loose-quote stream))
          (skip-whitespace (buffered-stream-skip-whitespace stream))
          (keep-meta-info (buffered-stream-keep-meta-info stream))
-         (cr (buffered-stream-accept-cr stream))
-         (lf (buffered-stream-accept-lf stream))
-         (crlf (buffered-stream-accept-crlf stream))
          (argument nil))
     (declare (type character separator quote))
     (flet ((add (x)

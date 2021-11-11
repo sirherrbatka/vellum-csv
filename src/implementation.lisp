@@ -159,6 +159,7 @@
 
 
 (defmethod cl-ds:traverse ((object csv-range) function)
+  (declare (optimize (speed 3) (space 0) (compilation-speed 0)))
   (with-stream-input (stream object)
     (let* ((*separator* (separator object))
            (*line-endings* (line-endings object))
@@ -166,29 +167,35 @@
            (*accept-cr* (not (null (member +cr+ *line-endings* :test #'equal))))
            (*accept-lf* (not (null (member +lf+ *line-endings* :test #'equal))))
            (*accept-crlf* (not (null (member +crlf+ *line-endings* :test #'equal))))
-           (*quote* (csv-quote object)))
+           (*quote* (csv-quote object))
+           (cr *accept-cr*)
+           (lf *accept-lf*)
+           (crlf *accept-crlf*))
       (validate-csv-parameters)
-      (iterate
-        (with strings = (vect))
-        (with buffered-stream = (make-buffered-stream :stream stream))
-        (with header = (vellum.header:read-header object))
-        (while (buffered-stream-peek buffered-stream))
-        (for result = (read-csv-line buffered-stream strings))
-        (when (and (first-iteration-p) (includes-header-p object))
-          (next-iteration))
+      (cl-ds.utils:cases (cr lf crlf)
         (iterate
-          (for i from 0 below (length result))
-          (for data-type = (vellum.header:column-type header i))
-          (for elt = (aref result i))
-          (for value = (from-string data-type elt))
-          (unless (or (eq :null value)
-                      (typep value data-type))
-            (error 'vellum.column:column-type-error
-                   :expected-type data-type
-                   :column i
-                   :datum value))
-          (setf (aref result i) value)
-          (finally (funcall function result))))))
+          (with strings = (vect))
+          (with buffered-stream = (make-buffered-stream :stream stream))
+          (with header = (vellum.header:read-header object))
+          (while (buffered-stream-peek buffered-stream))
+          (for result = (read-csv-line buffered-stream strings
+                                       cr lf crlf))
+          (when (and (first-iteration-p) (includes-header-p object))
+            (next-iteration))
+          (iterate
+            (declare (type fixnum i))
+            (for i from 0 below (length result))
+            (for data-type = (vellum.header:column-type header i))
+            (for elt = (aref result i))
+            (for value = (from-string data-type elt))
+            (unless (or (eq :null value)
+                        (typep value data-type))
+              (error 'vellum.column:column-type-error
+                     :expected-type data-type
+                     :column i
+                     :datum value))
+            (setf (aref result i) value)
+            (finally (funcall function result)))))))
   object)
 
 
