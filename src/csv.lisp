@@ -146,10 +146,12 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
 ;;  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 ;;  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (declaim (inline read-csv))
-(defun read-csv (stream callback separator quote)
+(defun read-csv (stream row-callback column-callback
+                 separator quote)
   (declare (type character separator quote))
   (let* ((minimum-room 4096)
-         (callback (ensure-function callback))
+         (row-callback (ensure-function row-callback))
+         (column-callback (ensure-function column-callback))
          (buffer (make-array (* 2 minimum-room) :element-type 'character))
          (start 0)                      ;start of our current field
          ;; fill pointer of buffer
@@ -176,22 +178,25 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                  (when (= p fptr) (underflow)))
                (setq c (if (= p fptr) nil (char buffer p))))
              (read-field ()
-               (cond ((eql #\" c)
+               (cond ((eql quote c)
                       (consume)
                       (read-dquote-field))
                      (t
                       (setq start p)
                       (loop until (member c `(,separator #\newline nil)) do (consume))
-                      (subseq buffer start p))))
+                      (funcall column-callback buffer start p))))
              (read-dquote-field ()
-               (prog1
-                   (format nil "~{~A~^\"~}"
-                           (loop collect (progn
-                                           (setq start p)
-                                           (loop until (member c `(,quote nil)) do (consume))
-                                           (subseq buffer start p))
-                                 do (when (eql quote c) (consume))
-                                 while (eql quote c) do (consume)))
+               (let ((value (format nil "~{~A~^\"~}"
+                                    (loop collect (progn
+                                                    (setq start p)
+                                                    (loop until (member c `(,quote nil)) do (consume))
+                                                    (subseq buffer start p))
+                                          do (when (eql quote c) (consume))
+                                          while (eql quote c) do (consume)))))
+                   (funcall column-callback
+                            value
+                            0
+                            (length value))
                  (assert (member c (list #\newline separator nil)))))
              (read-row ()
                ;; Question: What is an empty line? One empty field, or no field?
@@ -201,7 +206,9 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                  (consume))))
       (declare (inline underflow consume read-field read-row))
       (consume)
-      (loop until (null c) :do (funcall callback (read-row))))))
+      (loop until (null c) :do (progn
+                                 (read-row)
+                                 (funcall row-callback))))))
 
 
 (defun char-needs-quoting (x)

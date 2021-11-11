@@ -73,59 +73,56 @@
       (call-next-method)))
 
 
-(defmethod from-string :around (type string)
-  (if (or (emptyp string) (string= "NULL" string))
+(defmethod from-string :around (type string start end)
+  (if (or (= start end) (string= "NULL" string :start2 start :end2 end))
       :null
       (call-next-method)))
 
 
-(defmethod from-string ((type (eql 'number)) string)
-  (parse-number string :float-format 'double-float))
+(defmethod from-string ((type (eql 'number)) string start end)
+  (parse-number string :float-format 'double-float
+                       :start start
+                       :end end))
 
 
-(defmethod from-string ((type (eql 'fixnum)) string)
-  (parse-integer string))
+(defmethod from-string ((type (eql 'fixnum)) string start end)
+  (parse-integer string
+                 :start start
+                 :end end))
 
 
-(defmethod from-string ((type (eql 'integer)) string)
-  (parse-integer string))
+(defmethod from-string ((type (eql 'integer)) string start end)
+  (parse-integer string
+                 :start start
+                 :end end))
 
 
-(defun copy-string (string)
-  (declare (type (and string (not simple-string))
-                 string)
-           (optimize (speed 3) (safety 0)))
-  (iterate
-    (declare (type fixnum size i)
-             (type simple-string result source))
-    (with source = (array-displacement string))
-    (with size = (length string))
-    (with result = (make-string size))
-    (for i from 0 below size)
-    (setf (aref result i) (aref source i))
-    (finally (return result))))
+(defmethod from-string ((type (eql 'string)) string start end)
+  (subseq string start end))
 
 
-(defmethod from-string ((type (eql 'string)) string)
-  string)
-
-
-(defmethod from-string ((type (eql 'float)) string)
-  (parse-float string :type 'double-float))
+(defmethod from-string ((type (eql 'float)) string start end)
+  (parse-float string :type 'double-float
+                      :start start
+                      :end end))
 
 
 
-(defmethod from-string ((type (eql 'single-float)) string)
-  (coerce (parse-float string :type 'double-float)
+(defmethod from-string ((type (eql 'single-float)) string start end)
+  (coerce (parse-float string :type 'double-float
+                              :start start
+                              :end end)
           'single-float))
 
 
-(defmethod from-string ((type (eql 'double-float)) string)
-  (parse-float string :type 'double-float))
+(defmethod from-string ((type (eql 'double-float)) string start end)
+  (parse-float string :type 'double-float
+                      :start start
+                      :end end))
 
 
-(defmethod from-string ((type (eql t)) string)
-  string)
+(defmethod from-string ((type (eql t)) string start end)
+  (subseq string start end))
 
 
 (defmethod to-string (type value)
@@ -137,17 +134,19 @@
   (if value "True" "False"))
 
 
-(defmethod from-string ((type (eql 'boolean)) string)
-  (switch (string :test string=)
-    ("1" t)
-    ("0" nil)
-    ("T" t)
-    ("NIL" nil)
-    ("True" t)
-    ("False" nil)
-    ("F" nil)
-    ("Yes" t)
-    ("No" nil)))
+(defmethod from-string ((type (eql 'boolean)) string start end)
+  (flet ((compare (a b)
+           (string= a b :start1 start :end2 end)))
+    (switch (string :test compare)
+      ("1" t)
+      ("0" nil)
+      ("T" t)
+      ("NIL" nil)
+      ("True" t)
+      ("False" nil)
+      ("F" nil)
+      ("Yes" t)
+      ("No" nil))))
 
 
 (defmacro with-stream-input ((stream range) &body body)
@@ -165,21 +164,22 @@
            (*quote* (csv-quote object))
            (includes-header-p (includes-header-p object))
            (header (vellum.header:read-header object))
-           (first-iteration t))
+           (first-iteration t)
+           (result (make-array (vellum.header:column-count header)
+                               :initial-element :null))
+           (i 0))
       (validate-csv-parameters)
       (read-csv stream
-                (lambda (row)
-                  (declare (type list row)
-                           (optimize (speed 3) (safety 0)))
+                (lambda ()
+                  (unless first-iteration
+                    (funcall function result))
+                  (setf i 0
+                        result (make-array (vellum.header:column-count header))
+                        first-iteration nil))
+                (lambda (elt start end)
                   (unless (and includes-header-p first-iteration)
-                    (iterate
-                      (declare (type fixnum i))
-                      (with length = (length row))
-                      (with result = (make-array length))
-                      (for i from 0 below length)
-                      (for data-type = (vellum.header:column-type header i))
-                      (for elt in row)
-                      (for value = (from-string data-type elt))
+                    (bind ((data-type (vellum.header:column-type header i))
+                           (value  (from-string data-type elt start end)))
                       (unless (or (eq :null value)
                                   (typep value data-type))
                         (error 'vellum.column:column-type-error
@@ -187,8 +187,7 @@
                                :column i
                                :datum value))
                       (setf (aref result i) value)
-                      (finally (funcall function result))))
-                  (setf first-iteration nil))
+                      (incf i))))
                 *separator*
                 *quote*)))
   object)
