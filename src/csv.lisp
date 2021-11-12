@@ -189,7 +189,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                  (read-field)
                  (while (eql c separator))
                  (consume))
-               (ecase c ((#\newline nil)))
+               (assert (or (null c) (eql #\newline c)))
                (consume)))
       (declare (inline underflow consume read-field read-row
                        consume-whitespace report-result))
