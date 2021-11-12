@@ -143,12 +143,13 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                      (t
                       (setf start p)
                       (iterate
+                        (declare (type fixnum end))
                         (with end = start)
                         (until (or (null c) (eql c separator) (eql c #\newline)))
-                        (consume)
                         (unless (char-space-p separator c)
                           (setf end p))
-                        (finally (report-result start end))))))
+                        (consume)
+                        (finally (report-result start (1+ end)))))))
              (read-quote-field ()
                (let ((value (with-output-to-string (stream)
                               (iterate
