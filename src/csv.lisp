@@ -148,7 +148,9 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                         (unless (char-space-p separator c)
                           (setf count  (- p start -1)))
                         (consume)
-                        (finally (report-result start (the fixnum (+ count start))))))))
+                        (finally (let ((end (+ count start)))
+                                   (declare (type fixnum end))
+                                   (report-result start end)))))))
              (read-quote-field ()
                (let ((value (with-output-to-string (stream)
                               (iterate
