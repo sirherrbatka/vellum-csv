@@ -134,7 +134,9 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                  (setf start p)))
              (read-field ()
                (consume-whitespace)
-               (cond ((eql quote c)
+               (cond ((eql #\newline c)
+                      nil)
+                     ((eql quote c)
                       (consume)
                       (read-quote-field))
                      (t
