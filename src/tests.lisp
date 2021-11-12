@@ -1,6 +1,6 @@
 (cl:in-package #:vellum-csv)
 
-(prove:plan 16)
+(prove:plan 17)
 
 (let ((frame
         (vellum:copy-from
@@ -58,6 +58,13 @@
 (let ((list (csv-to-list "1,2,3
 
                           4,5,6"
+                         #\, #\" #\")))
+  (prove:is list '(("1" "2" "3") ("4" "5" "6"))))
+
+(let ((list (csv-to-list "1,2,3
+
+                          4,5,6
+"
                          #\, #\" #\")))
   (prove:is list '(("1" "2" "3") ("4" "5" "6"))))
 
