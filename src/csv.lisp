@@ -148,8 +148,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                         (unless (char-space-p separator c)
                           (incf count))
                         (consume)
-                        (finally
-                         (report-result start (the fixnum (+ count start))))))))
+                        (finally (report-result start (the fixnum (+ count start))))))))
              (read-quote-field ()
                (let ((value (with-output-to-string (stream)
                               (iterate
@@ -191,8 +190,8 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                  (consume))
                (assert (or (null c) (eql #\newline c)))
                (consume)))
-      (declare (inline underflow consume read-field read-row
-                       consume-whitespace report-result))
+      (declare (inline underflow consume read-field report-row read-row
+                       consume-whitespace read-quote-field))
       (consume)
       (iterate
         (until (null c))
