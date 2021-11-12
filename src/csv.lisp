@@ -146,7 +146,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                                    (eql c separator)
                                    (eql c #\newline)))
                         (unless (char-space-p separator c)
-                          (incf count))
+                          (setf count  (- p start -1)))
                         (consume)
                         (finally (report-result start (the fixnum (+ count start))))))))
              (read-quote-field ()

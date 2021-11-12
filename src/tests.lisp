@@ -1,6 +1,6 @@
 (cl:in-package #:vellum-csv)
 
-(prove:plan 1)
+(prove:plan 15)
 
 (let ((frame
         (vellum:copy-from
@@ -27,4 +27,32 @@
                    (vellum:drop-row))))))
   (prove:is (vellum:row-count frame) 6))
 
-(prove:finalize 1)
+(let ((list (first (csv-to-list "1,2,3" #\, #\" #\"))))
+  (prove:is (length list) 3)
+  (prove:is list '("1" "2" "3")))
+
+(let ((list (first (csv-to-list "1  , 2,3" #\, #\" #\"))))
+  (prove:is (length list) 3)
+  (prove:is list '("1" "2" "3")))
+
+(let ((list (first (csv-to-list "1 ioen , 2,3" #\, #\" #\"))))
+  (prove:is (length list) 3)
+  (prove:is list '("1 ioen" "2" "3")))
+
+(let ((list (first (csv-to-list "  1 ioen , 2,3" #\, #\" #\"))))
+  (prove:is (length list) 3)
+  (prove:is list '("1 ioen" "2" "3")))
+
+(let ((list (first (csv-to-list "  1 i oen , 2,3" #\, #\" #\"))))
+  (prove:is (length list) 3)
+  (prove:is list '("1 i oen" "2" "3")))
+
+(let ((list (first (csv-to-list ", ," #\, #\" #\"))))
+  (prove:is (length list) 3)
+  (prove:is list '("" "" "")))
+
+(let ((list (first (csv-to-list ", ,    5   " #\, #\" #\"))))
+  (prove:is (length list) 3)
+  (prove:is list '("" "" "5")))
+
+(prove:finalize)
