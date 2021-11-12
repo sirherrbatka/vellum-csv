@@ -22,31 +22,14 @@
     (define *quote*
   #\" #\"
       "delimiter of string data; pascal-like quoted as double itself in a string.")
-    (define *unquoted-quotequote*
-  nil nil
+(nil nil
       "does a pair of quotes represent a quote outside of quotes?
 M$, RFC says NIL, csv.3tcl says T")
     (define *escape* #\" #\"
       "Character used for escaping strings.")
-    (define *loose-quote*
-  nil nil
-      "can quotes appear anywhere in a field?")
-    (define *allow-binary*
-  t t
-      "do we accept non-ascii data?")
-    (define *keep-meta-info*
-  nil nil
-      "when parsing, include meta information?")
-    (define *skip-whitespace*
-  nil t
-      "shall we skip unquoted whitespace around separators?")
-    (define *line-endings*
-      (list +crlf+ +lf+) (list +cr+ +lf+ +crlf+)
-      "acceptable line endings when importing CSV")
     (define *eol*
       +lf+ +crlf+
-      "line ending when exporting CSV")
-    ))
+      "line ending when exporting CSV")))
 
 (defun char-ascii-text-p (c)
   (<= #x20 (char-code c) #x7E))
@@ -58,16 +41,7 @@ M$, RFC says NIL, csv.3tcl says T")
   (assert (typep *separator* 'character) ())
   (assert (typep *quote* 'character) ())
   (assert (not (eql *separator* *quote*)) ())
-  (assert (typep *unquoted-quotequote* 'boolean) ())
-  (assert (typep *loose-quote* 'boolean) ())
-  (assert (valid-eol-p *eol*) ())
-  (assert (and *line-endings* (every #'valid-eol-p *line-endings*)) ())
-  (assert (typep *keep-meta-info* 'boolean) ())
-  (assert (typep *skip-whitespace* 'boolean) ()))
-
-(defvar *accept-cr* t "internal: do we accept cr?")
-(defvar *accept-lf* t "internal: do we accept lf?")
-(defvar *accept-crlf* t "internal: do we accept crlf?")
+  (assert (valid-eol-p *eol*) ()))
 
 (define-constant +buffer-size+ 4096)
 
@@ -82,7 +56,9 @@ and is what the creativyst document specifies.
 Be careful to not skip a separator, as it could be e.g. a tab!"
   (declare (type (or null character) c)
            (type character separator)
-           (optimize (speed 3) (safety 0) (debug 0) (space 0) (compilation-speed 0)))
+           (optimize (speed 3) (safety 0)
+                     (debug 0) (space 0)
+                     (compilation-speed 0)))
   (and c
        (or (eql c #\Space)
            (eql c #\Tab))
@@ -114,22 +90,6 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
 ;;  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 ;;  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 ;;  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-(defun csv-to-list (string separator quote escape)
-  (let ((result (list))
-        (row (list)))
-    (with-input-from-string (stream string)
-      (read-csv stream
-                (lambda ()
-                  (push (nreverse row) result)
-                  (setf row (list)))
-                (lambda (value start end)
-                  (push (subseq value start end) row))
-                separator
-                quote
-                escape))
-    (nreverse result)))
-
-
 (declaim (notinline read-csv))
 (defun read-csv (stream row-callback column-callback
                  separator quote escape)
@@ -238,10 +198,27 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
         (report-row)))))
 
 
+(defun csv-to-list (string separator quote escape)
+  (let ((result (list))
+        (row (list)))
+    (with-input-from-string (stream string)
+      (read-csv stream
+                (lambda ()
+                  (push (nreverse row) result)
+                  (setf row (list)))
+                (lambda (value start end)
+                  (push (subseq value start end) row))
+                separator
+                quote
+                escape))
+    (nreverse result)))
+
+
 (defun char-needs-quoting (x)
   (or (eql x *quote*)
       (eql x *separator*)
       (not (char-ascii-text-p x))))
+
 
 (defun string-needs-quoting (x)
   (and (not (zerop (length x)))
@@ -250,11 +227,6 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
      (some #'char-needs-quoting x))
        t))
 
-(defun write-csv-lines (lines stream)
-  "Given a list of LINES, each of them a list of fields, and a STREAM,
-  format those lines as CSV according to the current syntax parameters."
-  (dolist (x lines)
-    (write-csv-line x stream)))
 
 (defun write-csv-line (fields stream)
   "Format one line of FIELDS to STREAM in CSV format,
@@ -265,6 +237,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
       (write-char *separator* stream)))
   (write-string *eol* stream))
 
+
 (defun write-csv-field (field stream)
   (etypecase field
     (null t)
@@ -272,10 +245,12 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
     (string (write-csv-string-safely field stream))
     (symbol (write-csv-string-safely (symbol-name field) stream))))
 
+
 (defun write-csv-string-safely (string stream)
   (if (string-needs-quoting string)
       (write-quoted-string string stream)
       (write-string string stream)))
+
 
 (defun write-quoted-string (string stream)
   (write-char *quote* stream)
