@@ -16,15 +16,10 @@
             (eval-when (:compile-toplevel :load-toplevel :execute)
               (pushnew `(,',var ,,rfc4180 ,,creativyst) *csv-variables* :key #'car))
             (defparameter ,var ,creativyst ,doc))))
-    (define *separator*
-  #\, #\,
+    (define *separator* #\, #\,
       "Separator between CSV fields")
-    (define *quote*
-  #\" #\"
+    (define *quote* #\" #\"
       "delimiter of string data; pascal-like quoted as double itself in a string.")
-(nil nil
-      "does a pair of quotes represent a quote outside of quotes?
-M$, RFC says NIL, csv.3tcl says T")
     (define *escape* #\" #\"
       "Character used for escaping strings.")
     (define *eol*
@@ -99,22 +94,25 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
          (column-callback (ensure-function column-callback))
          (buffer (make-array (* 2 minimum-room) :element-type 'character))
          (columns-counter 0)
+         (end 0)
          (start 0)                      ;start of our current field
          (fptr 0)                       ;fill pointer of buffer
          (p -1)                         ;reading pointer
          (c #\space))                   ;lookahead
     (declare (type (simple-array character (*)) buffer)
              (type (or null character) c)
-             (type fixnum start fptr p minimum-room columns-counter)
+             (type fixnum start fptr p minimum-room columns-counter end)
              (optimize (speed 3) (safety 0) (compilation-speed 0)
                        (space 0) (debug 0)))
     (labels ((underflow ()
                (replace buffer buffer :start2 start :end2 p)
                (decf p start)
+               (decf end start)
                (decf start start)
-               (when (<= (- (length buffer) start) minimum-room)
-                 (setf buffer (adjust-array buffer (+ (length buffer) minimum-room)))
-                 (setf minimum-room (ash minimum-room 2)))
+               (let ((length (length buffer)))
+                 (when (<= (- length start) minimum-room)
+                   (setf buffer (adjust-array buffer (+ length minimum-room)))
+                   (setf minimum-room (ash minimum-room 2))))
                (setf fptr (read-sequence buffer stream :start p)))
              (report-result (start end &optional (value buffer))
                (funcall column-callback
@@ -141,11 +139,11 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                       (consume)
                       (read-quote-field))
                      (t
-                      (setf start p)
+                      (setf start p
+                            end start)
                       (iterate
                         (declare (type fixnum end)
                                  (type boolean empty))
-                        (with end = start)
                         (with empty = t)
                         (until (or (null c) (eql c separator) (eql c #\newline)))
                         (unless (char-space-p separator c)
