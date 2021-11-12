@@ -94,25 +94,23 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
          (column-callback (ensure-function column-callback))
          (buffer (make-array (* 2 minimum-room) :element-type 'character))
          (columns-counter 0)
-         (end 0)
          (start 0)                      ;start of our current field
          (fptr 0)                       ;fill pointer of buffer
          (p -1)                         ;reading pointer
          (c #\space))                   ;lookahead
     (declare (type (simple-array character (*)) buffer)
              (type (or null character) c)
-             (type fixnum start fptr p minimum-room columns-counter end)
+             (type fixnum start fptr p minimum-room columns-counter)
              (optimize (speed 3) (safety 0) (compilation-speed 0)
                        (space 0) (debug 0)))
     (labels ((underflow ()
                (replace buffer buffer :start2 start :end2 p)
                (decf p start)
-               (decf end start)
-               (decf start start)
+               (setf start 0)
                (let ((length (length buffer)))
                  (when (<= (- length start) minimum-room)
-                   (setf buffer (adjust-array buffer (+ length minimum-room)))
-                   (setf minimum-room (ash minimum-room 2))))
+                   (setf buffer (adjust-array buffer (+ length minimum-room))
+                         minimum-room (ash minimum-room 2))))
                (setf fptr (read-sequence buffer stream :start p)))
              (report-result (start end &optional (value buffer))
                (funcall column-callback
@@ -132,28 +130,26 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
              (consume-whitespace ()
                (iterate
                  (while (char-space-p separator c))
-                 (consume)))
+                 (consume)
+                 (setf start p)))
              (read-field ()
                (consume-whitespace)
                (cond ((eql quote c)
                       (consume)
                       (read-quote-field))
                      (t
-                      (setf start p
-                            end start)
+                      (setf start p)
                       (iterate
-                        (declare (type fixnum end)
-                                 (type boolean empty))
-                        (with empty = t)
-                        (until (or (null c) (eql c separator) (eql c #\newline)))
+                        (declare (type fixnum count))
+                        (with count = 0)
+                        (until (or (null c)
+                                   (eql c separator)
+                                   (eql c #\newline)))
                         (unless (char-space-p separator c)
-                          (setf end p
-                                empty nil))
+                          (incf count))
                         (consume)
                         (finally
-                         (if empty
-                             (report-result start start)
-                             (report-result start (1+ end))))))))
+                         (report-result start (the fixnum (+ count start))))))))
              (read-quote-field ()
                (let ((value (with-output-to-string (stream)
                               (iterate
@@ -163,6 +159,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                                            (eql c escape))
                                   (consume)
                                   (setf escaped t))
+                                (setf start p)
                                 (if (eql quote escape)
                                     (if escaped
                                         (cond ((eql c quote)
