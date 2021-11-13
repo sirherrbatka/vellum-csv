@@ -17,4 +17,4 @@ Strings are automaticly converted to values, depending on the :TYPE of the colum
 
 This system is implemented by the means of the CSV-RANGE. CSV-RANGE can be used on it's own to aggregate CSV files that are unsuitable for putting in to the table. Example of these are a very large files, that are unlikely to fit into the main memory. Using reservoir sampling or data sketch techniques (available in CL-DS) can be favored in those situations. Furthermore, instead of passing path to the CSV file, it is actually possible to use this system with an cl-ds range, as long as it yields csv rows in the form of the string. This makes it possible to read mutliple CSV into a singular table at once, use (already mentioned) reservoir sampling techniques or integrate with UNIX system to handle tricky archive formats (XYZ for instance). The downside is that this forces user to remove CSV table headers manually.
 
-Parser implemented in this system is a modified fare-csv code.
+Parser implemented in this system is based on the code written by Gilbert Baumann. Writer is based on the fare-csv code.
