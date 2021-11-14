@@ -171,6 +171,7 @@
            (result (make-array (vellum.header:column-count header)
                                :initial-element :null))
            (i 0))
+      (declare (type simple-vector result))
       (validate-csv-parameters)
       (read-csv stream
                 (lambda ()

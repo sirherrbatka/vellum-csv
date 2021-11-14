@@ -4,10 +4,12 @@ This system adds a basic support for reading tables from and writing tables to c
 
 #+BEGIN_SRC common-lisp
   (defparameter *table*
-    (vellum:copy-from :csv "~/csv.csv"
+    (vellum:copy-from :csv "/path/to/csv/file/csv.csv"
                       :includes-header-p t
                       :columns '(a b)))
 #+END_SRC
+
+This system also supports cl-ds.fs:command input which allows to handle csv output produced by other programs. This is handy when dealing with compressed csv files.
 
 #+BEGIN_SRC common-lisp
   (vellum:copy-to :csv "~/output.csv" *table* )
