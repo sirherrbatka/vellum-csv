@@ -174,7 +174,7 @@
       (validate-csv-parameters)
       (read-csv stream
                 (lambda ()
-                  (unless first-iteration
+                  (unless (and includes-header-p first-iteration)
                     (funcall function result))
                   (setf i 0
                         result (make-array (vellum.header:column-count header))
