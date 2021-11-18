@@ -8,4 +8,6 @@
    #:call-from-string-again
    #:csv-format-error
    #:to-string
-   #:from-string))
+   #:from-string
+   #:write-csv-field
+   #:write-csv-line))
