@@ -1,10 +1,10 @@
 (in-package :vellum-csv)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (define-constant +cr+ #.(format nil "~A" #\Return)
-    :test 'equal)
-  (define-constant +lf+ #.(format nil "~A" #\Linefeed)
-    :test 'equal)
+  (define-constant +cr+ #.#\Return
+    :test 'eql)
+  (define-constant +lf+ #.#\Linefeed
+    :test 'eql)
   (define-constant +crlf+ #.(format nil "~A~A" #\Return #\Linefeed)
     :test 'equal)
   (defparameter *csv-variables* '())) ; list of (var rfc4180-value creativyst-value)
@@ -167,6 +167,11 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                         start
                         end)
                (incf columns-counter))
+             (new-line-p ()
+               (or (eql #\newline c)
+                   (eql +cr+ c)
+                   (eql +lf+ c)
+                   (eql +crlf+ c)))
              (report-row ()
                (unless (zerop columns-counter)
                  (funcall row-callback))
@@ -183,8 +188,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                  (setf start p)))
              (read-field ()
                (consume-whitespace)
-               (cond ((eql #\newline c)
-                      nil)
+               (cond ((new-line-p) nil)
                      ((eql quote c)
                       (consume)
                       (read-quote-field))
@@ -195,7 +199,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                         (with count = 0)
                         (until (or (null c)
                                    (eql c separator)
-                                   (eql c #\newline)))
+                                   (new-line-p)))
                         (unless (char-space-p separator c)
                           (setf count  (- p start -1)))
                         (consume)
@@ -241,10 +245,10 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                  (read-field)
                  (while (eql c separator))
                  (consume))
-               (assert (or (null c) (eql #\newline c)))
+               (assert (or (null c) (new-line-p)))
                (consume)))
       (declare (inline underflow consume read-field report-row read-row
-                       consume-whitespace read-quote-field))
+                       consume-whitespace read-quote-field new-line-p))
       (consume)
       (iterate
         (until (null c))
