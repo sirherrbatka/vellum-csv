@@ -11,6 +11,7 @@
                 #:serapeum
                 #:uiop
                 (:version #:vellum ((>= "1.2.0")))
+                #:parse-float
                 #:alexandria
                 #:documentation-utils-extensions)
   :serial T

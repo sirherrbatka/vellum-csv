@@ -104,23 +104,22 @@
 
 
 (defmethod from-string ((type (eql 'float)) string start end)
-  (parse-float string :type 'double-float
-                      :start start
-                      :end end))
+  (parse-float:parse-float string :type 'double-float
+                                  :start start
+                                  :end end))
 
 
 
 (defmethod from-string ((type (eql 'single-float)) string start end)
-  (coerce (parse-float string :type 'double-float
-                              :start start
-                              :end end)
-          'single-float))
+  (parse-float:parse-float string :type 'single-float
+                                  :start start
+                                  :end end))
 
 
 (defmethod from-string ((type (eql 'double-float)) string start end)
-  (parse-float string :type 'double-float
-                      :start start
-                      :end end))
+  (parse-float:parse-float string :type 'double-float
+                                  :start start
+                                  :end end))
 
 
 (defmethod from-string ((type (eql t)) string start end)
