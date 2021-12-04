@@ -62,52 +62,6 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
        (not (eql c separator))))
 
 
-(defun char-needs-quoting (x)
-  (or (eql x *quote*)
-      (eql x *separator*)
-      (not (char-ascii-text-p x))))
-
-
-(defun string-needs-quoting (x)
-  (and (not (zerop (length x)))
-       (or (char-space-p *separator* (char x 0))
-     (char-space-p *separator* (char x (1- (length x))))
-     (some #'char-needs-quoting x))
-       t))
-
-
-(defun write-csv-line (fields stream)
-  "Format one line of FIELDS to STREAM in CSV format,
-  using the current syntax parameters."
-  (loop :for x :on fields :do
-    (write-csv-field (first x) stream)
-    (when (cdr x)
-      (write-char *separator* stream)))
-  (write-string *eol* stream))
-
-
-(defun write-csv-field (field stream)
-  (etypecase field
-    (null t)
-    (number (princ field stream))
-    (string (write-csv-string-safely field stream))
-    (symbol (write-csv-string-safely (symbol-name field) stream))))
-
-
-(defun write-csv-string-safely (string stream)
-  (if (string-needs-quoting string)
-      (write-quoted-string string stream)
-      (write-string string stream)))
-
-
-(defun write-quoted-string (string stream)
-  (write-char *quote* stream)
-  (loop :for c :across string :do
-    (when (char= c *quote*)
-      (write-char c stream))
-    (write-char c stream))
-  (write-char *quote* stream))
-
 ;; ---------------------------------------------------------------------------
 ;;     Title: A very simple CSV Reader
 ;;   Created: 2021-11-11
@@ -270,3 +224,50 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                 quote
                 escape))
     (nreverse result)))
+
+
+(defun char-needs-quoting (x)
+  (or (eql x *quote*)
+      (eql x *separator*)
+      (not (char-ascii-text-p x))))
+
+
+(defun string-needs-quoting (x)
+  (and (not (zerop (length x)))
+       (or (char-space-p *separator* (char x 0))
+     (char-space-p *separator* (char x (1- (length x))))
+     (some #'char-needs-quoting x))
+       t))
+
+
+(defun write-csv-line (fields stream)
+  "Format one line of FIELDS to STREAM in CSV format,
+  using the current syntax parameters."
+  (loop :for x :on fields :do
+    (write-csv-field (first x) stream)
+    (when (cdr x)
+      (write-char *separator* stream)))
+  (write-string *eol* stream))
+
+
+(defun write-csv-field (field stream)
+  (etypecase field
+    (null t)
+    (number (princ field stream))
+    (string (write-csv-string-safely field stream))
+    (symbol (write-csv-string-safely (symbol-name field) stream))))
+
+
+(defun write-csv-string-safely (string stream)
+  (if (string-needs-quoting string)
+      (write-quoted-string string stream)
+      (write-string string stream)))
+
+
+(defun write-quoted-string (string stream)
+  (write-char *quote* stream)
+  (loop :for c :across string :do
+    (when (char= c *quote*)
+      (write-char c stream))
+    (write-char c stream))
+  (write-char *quote* stream))
