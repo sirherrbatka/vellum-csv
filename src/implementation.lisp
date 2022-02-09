@@ -127,8 +127,7 @@
 
 
 (defmethod to-string (type value)
-  (with-output-to-string (stream)
-    (princ value stream)))
+  (princ-to-string value))
 
 
 (defmethod to-string ((type (eql 'boolean)) value)
