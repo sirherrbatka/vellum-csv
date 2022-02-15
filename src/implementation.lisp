@@ -136,7 +136,7 @@
 
 (defmethod from-string ((type (eql 'boolean)) string start end)
   (flet ((compare (a b)
-           (string= a b :start1 start :end2 end)))
+           (string= a b :start1 start :end1 end)))
     (switch (string :test compare)
       ("1" t)
       ("0" nil)
