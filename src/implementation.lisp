@@ -126,6 +126,14 @@
   (subseq string start end))
 
 
+(defmethod from-string (type string start end)
+  (if (or (subtypep type 'unsigned-byte) (subtypep type 'signed-byte))
+      (parse-integer string
+                     :start start
+                     :end end)
+      (call-next-method)))
+
+
 (defmethod to-string (type value)
   (princ-to-string value))
 
