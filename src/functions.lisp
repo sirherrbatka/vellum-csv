@@ -14,3 +14,11 @@
               :quote quote
               :separator separator
               :includes-header-p includes-header-p))
+
+
+(defun place-null ()
+  (invoke-restart 'place-null))
+
+
+(defun place-value (value)
+  (invoke-restart 'place-value value))

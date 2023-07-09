@@ -8,6 +8,10 @@
    #:call-from-string-again
    #:csv-format-error
    #:to-string
+   #:could-not-parse
    #:from-string
    #:write-csv-field
-   #:write-csv-line))
+   #:write-csv-line
+   #:place-null
+   #:place-value
+   #:could-not-parse))

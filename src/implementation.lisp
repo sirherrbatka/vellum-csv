@@ -78,7 +78,21 @@
 (defmethod from-string :around (type string start end)
   (if (or (= start end) (string= "NULL" string :start2 start :end2 end))
       :null
-      (call-next-method)))
+      (restart-case
+          (handler-case (call-next-method)
+            (error (e)
+              (error 'could-not-parse
+                     :column-index *column-index*
+                     :buffer string
+                     :start start
+                     :end end
+                     :column-type type
+                     :original-error e)))
+        (place-null (&optional value)
+          (declare (ignore value))
+          (return-from from-string :null))
+        (place-value (value)
+          (return-from from-string value)))))
 
 
 (defmethod from-string ((type (eql 'number)) string start end)
@@ -183,12 +197,13 @@
                 (lambda ()
                   (unless (and includes-header-p first-iteration)
                     (funcall function result))
-                  (setf i 0
+                  (setf *column-index* 0
                         result (make-array (vellum.header:column-count header))
                         first-iteration nil))
                 (lambda (elt start end)
                   (unless (and includes-header-p first-iteration)
                     (bind ((data-type (vellum.header:column-type header i))
+                           (*column-index* i)
                            (value  (from-string data-type elt start end)))
                       (unless (or (eq :null value)
                                   (typep value data-type))
