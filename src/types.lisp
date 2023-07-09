@@ -50,5 +50,3 @@
     (:path path)
     (:quote csv-quote)))
 
-
-(defvar *column-index*)
