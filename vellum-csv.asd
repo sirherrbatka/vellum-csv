@@ -17,6 +17,7 @@
   :serial T
   :pathname "src"
   :components ((:file "package")
+               (:file "variable")
                (:file "csv")
                (:file "generics")
                (:file "types")

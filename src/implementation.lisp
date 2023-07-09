@@ -76,7 +76,8 @@
 
 
 (defmethod from-string :around (type string start end)
-  (if (or (= start end) (string= "NULL" string :start2 start :end2 end))
+  (if (find-if (lambda (null) (string= null string :start2 start :end2 end))
+               *null-strings*)
       :null
       (restart-case
           (handler-case (call-next-method)

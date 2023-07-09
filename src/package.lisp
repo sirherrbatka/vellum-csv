@@ -10,6 +10,7 @@
    #:to-string
    #:could-not-parse
    #:from-string
+   #:*null-strings*
    #:write-csv-field
    #:write-csv-line
    #:place-null
