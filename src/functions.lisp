@@ -1,7 +1,7 @@
 (cl:in-package #:vellum-csv)
 
 
-(defun csv-range (path &key includes-header-p header separator quote escape)
+(defun csv-range (path &key includes-header-p header separator quote escape null-strings)
   (check-type path (or string pathname cl-ds.fs:command))
   (check-type header vellum.header:standard-header)
   (check-type separator character)
@@ -10,6 +10,7 @@
   (make-instance
    'csv-range :path path
               :header header
+              :null-strings null-strings
               :escape escape
               :quote quote
               :separator separator

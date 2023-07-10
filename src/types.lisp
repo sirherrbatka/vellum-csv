@@ -5,6 +5,8 @@
                      cl-ds:traversable)
   ((%includes-header-p :initarg :includes-header-p
                        :reader includes-header-p)
+   (%null-strings :initarg :null-strings
+                  :reader null-strings)
    (%path :initarg :path
           :reader path)
    (%separator :initarg :separator

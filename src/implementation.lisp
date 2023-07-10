@@ -53,6 +53,7 @@
                                (includes-header-p t)
                                (class 'vellum.table:standard-table)
                                (columns '())
+                               (null-strings *null-strings*)
                                (body nil)
                                (escape *escape*)
                                (separator *separator*)
@@ -63,6 +64,7 @@
                  :includes-header-p includes-header-p
                  :separator separator
                  :escape escape
+                 :null-strings null-strings
                  :quote quote
                  :header header)
       (vellum:to-table :body body
@@ -186,6 +188,7 @@
     (let* ((*separator* (separator object))
            (*quote* (csv-quote object))
            (*escape* (escape object))
+           (*null-strings* (null-strings object))
            (includes-header-p (includes-header-p object))
            (header (vellum.header:read-header object))
            (first-iteration t)
