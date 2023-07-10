@@ -17,7 +17,8 @@
               :includes-header-p includes-header-p))
 
 
-(defun place-null ()
+(defun place-null (&optional condition)
+  (declare (ignore condition))
   (invoke-restart 'place-null))
 
 

@@ -163,7 +163,7 @@
   (flet ((compare (a b)
            (string= a b :start1 start :end1 end)))
     (declare (inline compare))
-    (switch (string :test compare)
+    (eswitch (string :test compare)
       ("1" t)
       ("0" nil)
       ("T" t)
