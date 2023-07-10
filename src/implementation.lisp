@@ -162,6 +162,7 @@
 (defmethod from-string ((type (eql 'boolean)) string start end)
   (flet ((compare (a b)
            (string= a b :start1 start :end1 end)))
+    (declare (inline compare))
     (switch (string :test compare)
       ("1" t)
       ("0" nil)
@@ -171,7 +172,9 @@
       ("False" nil)
       ("F" nil)
       ("Yes" t)
-      ("No" nil))))
+      ("No" nil)
+      ("Y" t)
+      ("N" nil))))
 
 
 (defmacro with-stream-input ((stream range) &body body)
