@@ -201,7 +201,7 @@
                 (lambda ()
                   (unless (and includes-header-p first-iteration)
                     (funcall function result))
-                  (setf *column-index* 0
+                  (setf i 0
                         result (make-array (vellum.header:column-count header))
                         first-iteration nil))
                 (lambda (elt start end)
