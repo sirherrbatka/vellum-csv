@@ -126,6 +126,11 @@
                                   :end end))
 
 
+(defmethod from-string ((type (eql 'short-float)) string start end)
+  (parse-float:parse-float string :type 'short-float
+                                  :start start
+                                  :end end))
+
 
 (defmethod from-string ((type (eql 'single-float)) string start end)
   (parse-float:parse-float string :type 'single-float
