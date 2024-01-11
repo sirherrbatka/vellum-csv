@@ -3,3 +3,4 @@
 
 (defvar *column-index*)
 (defvar *null-strings* '("" "NULL"))
+(defvar *stream-output* nil)

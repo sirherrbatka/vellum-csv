@@ -2,7 +2,7 @@
 
 
 (defun csv-range (path &key includes-header-p header separator quote escape null-strings)
-  (check-type path (or string pathname cl-ds.fs:command))
+  (check-type path (or string pathname cl-ds.fs:command stream))
   (check-type header vellum.header:standard-header)
   (check-type separator character)
   (check-type escape character)

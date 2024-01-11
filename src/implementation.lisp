@@ -60,15 +60,20 @@
                                (quote *quote*)
                                (header (apply #'vellum.header:make-header columns)))
   (declare (ignore options))
-  (~> (csv-range path/range
-                 :includes-header-p includes-header-p
-                 :separator separator
-                 :escape escape
-                 :null-strings null-strings
-                 :quote quote
-                 :header header)
-      (vellum:to-table :body body
-                       :class class)))
+  (flet ((impl ()
+           (~> (csv-range path/range
+                          :includes-header-p includes-header-p
+                          :separator separator
+                          :escape escape
+                          :null-strings null-strings
+                          :quote quote
+                          :header header)
+               (vellum:to-table :body body
+                                :class class))))
+    (if (streamp path/range)
+        (let ((*stream-output* path/range))
+          (impl))
+        (impl))))
 
 
 (defmethod to-string :around (type value)
@@ -183,12 +188,14 @@
 
 
 (defmacro with-stream-input ((stream range) &body body)
-  (with-gensyms (!stream)
-    `(let* ((,stream (cl-ds.fs:open-stream-designator (path ,range)))
-            (,!stream ,stream))
-       (unwind-protect
-            ,@body
-         (close ,!stream)))))
+  `(if (null *stream-output*)
+       (let* ((*stream-output* (cl-ds.fs:open-stream-designator (path ,range)))
+              (,stream *stream-output*))
+         (unwind-protect
+              ,@body
+           (close *stream-output*)))
+       (let ((,stream *stream-output*))
+         ,@body)))
 
 
 (defmethod cl-ds:traverse ((object csv-range) function)
