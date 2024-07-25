@@ -161,6 +161,11 @@
       (call-next-method)))
 
 
+(defmethod to-string ((type (eql 'string)) value)
+  (remove-if (lambda (c) (char= c #\NULL))
+             value))
+
+
 (defmethod to-string (type value)
   (princ-to-string value))
 
