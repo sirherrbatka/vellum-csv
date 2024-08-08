@@ -41,7 +41,7 @@
                            input
                            &rest options
                            &key &allow-other-keys)
-  (with-open-stream (stream (cl-ds.fs:open-stream-designator output :output))
+  (with-open-stream (stream (cl-ds.fs:open-stream-designator output :direction :output))
     (apply #'vellum:copy-to format stream input options))
   input)
 
