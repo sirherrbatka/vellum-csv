@@ -65,14 +65,19 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
 (declaim (inline read-sequence-slow))
 (defun read-sequence-slow (buffer stream  start)
   (declare (optimize (speed 3) (safety 0)))
+  (let ((first-char (read-char stream nil nil nil)))
+    (if first-char
+        (setf (char buffer start) first-char)
+        (return-from read-sequence-slow start)))
   (iterate
     (declare (type fixnum i))
-    (for i from start below (array-dimension buffer 0))
+    (with position = (1+ start))
+    (for i from (1+ start) below (array-dimension buffer 0))
     (for char = (read-char-no-hang stream nil nil))
     (while char)
     (setf (char buffer i) char)
-    (incf start)
-    (finally (return start))))
+    (incf position)
+    (finally (return position))))
 
 ;; ---------------------------------------------------------------------------
 ;;     Title: A very simple CSV Reader
