@@ -61,6 +61,18 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
            (eql c #\Tab))
        (not (eql c separator))))
 
+;; TODO it seems that SBCL has broken read-sequence
+(declaim (inline read-sequence-slow))
+(defun read-sequence-slow (buffer stream  start)
+  (declare (optimize (speed 3) (safety 0)))
+  (iterate
+    (declare (type fixnum i))
+    (for i from start below (array-dimension buffer 0))
+    (for char = (read-char-no-hang stream nil nil))
+    (while char)
+    (setf (char buffer i) char)
+    (incf start)
+    (finally (return start))))
 
 ;; ---------------------------------------------------------------------------
 ;;     Title: A very simple CSV Reader
@@ -114,7 +126,7 @@ Be careful to not skip a separator, as it could be e.g. a tab!"
                          minimum-room (* minimum-room 2))))
                (decf p start)
                (setf start 0)
-               (setf fptr (read-sequence buffer stream :start p)))
+               (setf fptr (read-sequence-slow buffer stream p)))
              (report-result (start end &optional (value buffer))
                (funcall column-callback
                         value
