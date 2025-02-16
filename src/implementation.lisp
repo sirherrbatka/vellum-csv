@@ -108,6 +108,9 @@
                        :start start
                        :end end))
 
+(defmethod from-string ((type (eql 'symbol)) string start end)
+  (intern (subseq string start end)))
+
 
 (defmethod from-string ((type (eql 'fixnum)) string start end)
   (parse-integer string
@@ -164,6 +167,10 @@
 (defmethod to-string ((type (eql 'string)) value)
   (remove-if (lambda (c) (char= c #\NULL))
              value))
+
+
+(defmethod to-string ((type (eql 'symbol)) value)
+  (symbol-name value))
 
 
 (defmethod to-string (type value)
@@ -245,3 +252,7 @@
 
 (defmethod cl-ds:across ((object csv-range) function)
   (cl-ds:traverse object function))
+
+
+(defmethod cl-ds:clone ((object csv-range))
+  (cl-ds.utils:quasi-clone* object))

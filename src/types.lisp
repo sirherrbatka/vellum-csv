@@ -50,5 +50,5 @@
     (:escape escape)
     (:separator separator)
     (:path path)
+    (:null-strings null-strings)
     (:quote csv-quote)))
-
